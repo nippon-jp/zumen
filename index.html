@@ -3,73 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Floor Planner V2.0</title>
+    <title>Smart Floor Planner Ultra</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #f1f5f9; cursor: default; }
+        body { background-color: #f8fafc; cursor: default; }
         #canvas-container { position: relative; overflow: hidden; }
         canvas { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; touch-action: none; cursor: crosshair;}
-        .furniture-item { cursor: grab; }
-        .active-tool { border-color: #3b82f6; background-color: #eff6ff; color: #1d4ed8;}
+        .active-tool { border-color: #3b82f6 !important; background-color: #eff6ff !important; color: #1d4ed8 !important;}
+        .preset-btn { transition: all 0.2s; border: 1px solid #e2e8f0; }
+        .preset-btn:hover { border-color: #3b82f6; background-color: #f0f9ff; }
     </style>
 </head>
-<body class="flex flex-col h-screen select-none text-slate-900">
+<body class="flex flex-col h-screen select-none text-slate-900 font-sans">
 
     <!-- ヘッダー -->
     <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center shadow-sm z-10">
         <div class="flex items-center gap-3">
-            <span class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">S</span>
-            <h1 class="text-xl font-extrabold tracking-tight">Smart <span class="font-normal text-slate-500">Floor Planner <span class="text-xs bg-slate-100 px-2 py-1 rounded">V2.0</span></span></h1>
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold leading-tight">Smart Floor Planner</h1>
+                <p class="text-xs text-slate-500 font-medium">Ultra Edition v2.5</p>
+            </div>
         </div>
         <div class="flex gap-2">
-            <button onclick="saveToLocal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-xl text-white text-sm transition font-semibold shadow">保存</button>
-            <button onclick="clearAll()" class="bg-slate-100 hover:bg-slate-200 px-5 py-2.5 rounded-xl text-slate-700 text-sm transition">リセット</button>
+            <button onclick="saveToLocal()" class="bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-lg text-white text-sm transition font-bold shadow-md">保存</button>
+            <button onclick="clearAll()" class="bg-white border border-slate-200 hover:bg-slate-50 px-5 py-2 rounded-lg text-slate-600 text-sm transition">リセット</button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         <!-- サイドツールバー -->
-        <aside class="w-72 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 shadow-inner z-10">
-            <div>
-                <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">ツール</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="tool-wall" onclick="setTool('wall')" class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 active-tool">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path></svg>
-                        <span class="text-xs font-semibold">壁を描く</span>
-                    </button>
-                    <button id="tool-select" onclick="setTool('select')" class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7l-2.99 2.99a3 3 0 000 4.24l8.49 8.49a3 3 0 004.24 0l8.49-8.49a3 3 0 000-4.24L21 7M7 7l8.49 8.49M7 7l8.48-8.48a3 3 0 014.24 0l8.48 8.48M7 7H3"></path></svg>
-                        <span class="text-xs font-semibold">選択・移動</span>
-                    </button>
-                </div>
-            </div>
-
-            <div>
-                <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">家具パーツ (Drag & Drop)</h3>
-                <div class="grid grid-cols-1 gap-3">
-                    <div draggable="true" ondragstart="drag(event, 'sofa')" class="furniture-item border border-slate-200 p-4 rounded-xl flex items-center gap-4 hover:bg-slate-50 hover:border-slate-300">
-                        <div class="w-14 h-8 border-2 border-slate-600 rounded-sm relative bg-slate-50 flex items-center justify-center">
-                            <div class="absolute -top-1.5 w-10 h-3 bg-slate-600 rounded-sm"></div>
-                        </div>
-                        <span class="text-xs font-semibold text-slate-700">ソファ (3人掛け)</span>
-                    </div>
-                    <div draggable="true" ondragstart="drag(event, 'table')" class="furniture-item border border-slate-200 p-4 rounded-xl flex items-center gap-4 hover:bg-slate-50 hover:border-slate-300">
-                        <div class="w-12 h-12 border-2 border-amber-800 rounded-full bg-amber-50 shadow-inner"></div>
-                        <span class="text-xs font-semibold text-slate-700">円形テーブル</span>
-                    </div>
-                </div>
-            </div>
+        <aside class="w-80 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 shadow-inner z-10 overflow-y-auto">
             
-            <div class="mt-auto bg-slate-800 text-white p-5 rounded-2xl shadow-xl">
-                <p class="text-[10px] text-slate-400 mb-1 uppercase font-extrabold tracking-widest">現在の面積</p>
-                <p id="area-display" class="text-3xl font-extrabold text-blue-300">0.00 <span class="text-sm font-medium text-slate-500 ml-1">㎡</span></p>
+            <!-- テンプレート選択 -->
+            <section>
+                <h3 class="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest">間取りテンプレート</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="loadPreset('1K')" class="preset-btn py-2 rounded-lg text-xs font-bold text-slate-600">1K</button>
+                    <button onclick="loadPreset('1LDK')" class="preset-btn py-2 rounded-lg text-xs font-bold text-slate-600">1LDK</button>
+                    <button onclick="loadPreset('Square')" class="preset-btn py-2 rounded-lg text-xs font-bold text-slate-600">正方形</button>
+                    <button onclick="loadPreset('L-Shape')" class="preset-btn py-2 rounded-lg text-xs font-bold text-slate-600">L字</button>
+                    <button onclick="loadPreset('Studio')" class="preset-btn py-2 rounded-lg text-xs font-bold text-slate-600">Studio</button>
+                </div>
+            </section>
+
+            <!-- 描画ツール -->
+            <section>
+                <h3 class="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest">エディタツール</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="tool-wall" onclick="setTool('wall')" class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-600 transition active-tool">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        <span class="text-[11px] font-bold">壁を描く</span>
+                    </button>
+                    <button id="tool-select" onclick="setTool('select')" class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-600 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0V12m-3-0.5a1.5 1.5 0 003 0m0 0V9a1.5 1.5 0 013 0v5a5 5 0 01-10 0V6a1.5 1.5 0 113 0v4.5"></path></svg>
+                        <span class="text-[11px] font-bold">選択・移動</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 家具パーツ -->
+            <section>
+                <h3 class="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest">家具パーツ (ドラッグ&ドロップ)</h3>
+                <div class="space-y-2">
+                    <div draggable="true" ondragstart="drag(event, 'sofa')" class="group border border-slate-200 p-3 rounded-xl flex items-center gap-4 hover:bg-indigo-50 hover:border-indigo-200 cursor-grab active:cursor-grabbing">
+                        <div class="w-12 h-8 border-2 border-slate-400 rounded bg-white flex items-center justify-center relative shadow-sm">
+                            <div class="absolute -top-1 w-8 h-2 bg-slate-400 rounded-full"></div>
+                        </div>
+                        <span class="text-xs font-bold text-slate-700">ソファ</span>
+                    </div>
+                    <div draggable="true" ondragstart="drag(event, 'table')" class="group border border-slate-200 p-3 rounded-xl flex items-center gap-4 hover:bg-indigo-50 hover:border-indigo-200 cursor-grab active:cursor-grabbing">
+                        <div class="w-10 h-10 border-2 border-amber-600 rounded-full bg-amber-50 shadow-sm"></div>
+                        <span class="text-xs font-bold text-slate-700">円形テーブル</span>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 面積表示 -->
+            <div class="mt-auto bg-slate-900 text-white p-5 rounded-2xl shadow-xl">
+                <div class="flex items-center justify-between mb-1">
+                    <p class="text-[10px] text-slate-400 uppercase font-extrabold tracking-tighter">Current Area</p>
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                </div>
+                <p id="area-display" class="text-3xl font-mono font-bold text-indigo-400">0.00 <span class="text-sm font-normal text-slate-500">㎡</span></p>
             </div>
         </aside>
 
-        <!-- メインコンテンツ -->
-        <main class="flex-1 relative bg-slate-100 p-8 flex justify-center items-center">
+        <!-- メインキャンバス -->
+        <main class="flex-1 relative bg-slate-100 p-8 flex justify-center items-center overflow-auto">
             <div id="canvas-container" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <canvas id="floorPlanCanvas" width="900" height="700" class="shadow-2xl rounded-sm border border-slate-200 bg-white"></canvas>
+                <canvas id="floorPlanCanvas" width="900" height="700" class="shadow-2xl rounded border border-slate-200 bg-white"></canvas>
             </div>
         </main>
     </div>
@@ -79,27 +104,47 @@
         const ctx = canvas.getContext('2d');
         const areaDisplay = document.getElementById('area-display');
 
-        // アプリの状態
         let appState = {
             points: [], 
             furniture: [],
-            currentTool: 'wall', // 'wall', 'select'
+            currentTool: 'wall',
             drawing: false,
             tempPoint: null,
-            selectedObject: null, // type: 'point'|'furniture', index: idx, dragging: bool, rotating: bool
+            selectedObject: null, 
+        };
+
+        const PRESETS = {
+            '1K': {
+                points: [{x:200, y:150}, {x:550, y:150}, {x:550, y:550}, {x:200, y:550}, {x:200, y:150}],
+                furniture: [{x:375, y:450, type:'sofa', rotation:0}, {x:375, y:250, type:'table', rotation:0}]
+            },
+            '1LDK': {
+                points: [{x:150, y:150}, {x:700, y:150}, {x:700, y:550}, {x:400, y:550}, {x:400, y:350}, {x:150, y:350}, {x:150, y:150}],
+                furniture: [{x:550, y:350, type:'sofa', rotation:Math.PI/2}, {x:275, y:250, type:'table', rotation:0}]
+            },
+            'Square': {
+                points: [{x:250, y:200}, {x:600, y:200}, {x:600, y:500}, {x:250, y:500}, {x:250, y:200}],
+                furniture: [{x:425, y:350, type:'table', rotation:0}]
+            },
+            'L-Shape': {
+                points: [{x:150, y:150}, {x:600, y:150}, {x:600, y:350}, {x:400, y:350}, {x:400, y:550}, {x:150, y:550}, {x:150, y:150}],
+                furniture: [{x:275, y:450, type:'sofa', rotation:0}]
+            },
+            'Studio': {
+                points: [{x:300, y:100}, {x:550, y:100}, {x:550, y:600}, {x:300, y:600}, {x:300, y:100}],
+                furniture: [{x:425, y:500, type:'sofa', rotation:0}]
+            }
         };
 
         const snapSize = 20;
-        const hitRadius = 15; // オブジェクト選択の当たり判定範囲
-        const pixelToMeter = 100; // 100px = 1m とする
+        const hitRadius = 15;
+        const pixelToMeter = 100;
 
         // --- 初期化 ---
         window.addEventListener('DOMContentLoaded', () => {
             loadFromLocal();
-            setTool('wall'); // デフォルトは壁描き
         });
 
-        // --- ユーティリティ ---
         const snap = (pos) => Math.round(pos / snapSize) * snapSize;
         const getMousePos = (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -107,74 +152,59 @@
         };
         const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
-        // --- ツール選択 ---
         function setTool(tool) {
             appState.currentTool = tool;
             appState.selectedObject = null;
             document.querySelectorAll('aside button').forEach(b => b.classList.remove('active-tool'));
             document.getElementById(`tool-${tool}`).classList.add('active-tool');
-            if(tool === 'select') canvas.style.cursor = 'default';
-            else canvas.style.cursor = 'crosshair';
+            canvas.style.cursor = (tool === 'select') ? 'default' : 'crosshair';
             render();
         }
 
-        // --- マウスイベント処理 ---
+        function loadPreset(key) {
+            if (appState.points.length > 0 && !confirm('現在の作業内容を上書きしてテンプレートを読み込みますか？')) return;
+            const data = PRESETS[key];
+            appState.points = data.points.map(p => ({...p}));
+            appState.furniture = data.furniture.map(f => ({...f}));
+            setTool('select');
+            calculateArea();
+            render();
+        }
+
+        // --- マウスイベント ---
         canvas.addEventListener('mousedown', (e) => {
             const pos = getMousePos(e);
 
-            // 【選択ツール】オブジェクト選択
             if (appState.currentTool === 'select') {
-                // 1. 家具の回転ハンドル判定
                 if (appState.selectedObject?.type === 'furniture') {
                     const f = appState.furniture[appState.selectedObject.index];
-                    const rotHandle = {
-                        x: f.x + Math.sin(f.rotation) * 45,
-                        y: f.y - Math.cos(f.rotation) * 45
-                    };
-                    if (getDist(pos, rotHandle) < hitRadius) {
-                        appState.selectedObject.rotating = true;
-                        return;
-                    }
+                    const rotHandle = { x: f.x + Math.sin(f.rotation) * 45, y: f.y - Math.cos(f.rotation) * 45 };
+                    if (getDist(pos, rotHandle) < hitRadius) { appState.selectedObject.rotating = true; return; }
                 }
-                
-                // 2. 家具本体判定
                 for (let i = appState.furniture.length - 1; i >= 0; i--) {
                     if (getDist(pos, appState.furniture[i]) < 30) {
                         appState.selectedObject = { type: 'furniture', index: i, dragging: true, offset: { x: pos.x - appState.furniture[i].x, y: pos.y - appState.furniture[i].y } };
-                        render();
-                        return;
+                        render(); return;
                     }
                 }
-
-                // 3. 壁の頂点判定
                 for (let i = 0; i < appState.points.length; i++) {
                     if (getDist(pos, appState.points[i]) < hitRadius) {
                         appState.selectedObject = { type: 'point', index: i, dragging: true };
-                        render();
-                        return;
+                        render(); return;
                     }
                 }
-
-                // 何も選択しなかった場合
                 appState.selectedObject = null;
-                render();
-            }
-
-            // 【壁描きツール】頂点追加
-            if (appState.currentTool === 'wall') {
+            } else if (appState.currentTool === 'wall') {
                 appState.drawing = true;
                 appState.points.push(pos);
-                render();
             }
+            render();
         });
 
         canvas.addEventListener('mousemove', (e) => {
             const pos = getMousePos(e);
-
-            // 【選択ツール】移動・回転
             if (appState.currentTool === 'select' && appState.selectedObject) {
                 const sel = appState.selectedObject;
-                
                 if (sel.dragging) {
                     if (sel.type === 'point') appState.points[sel.index] = pos;
                     if (sel.type === 'furniture') {
@@ -185,29 +215,20 @@
                     const f = appState.furniture[sel.index];
                     f.rotation = Math.atan2(pos.y - f.y, pos.x - f.x) + Math.PI / 2;
                 }
-                render();
                 calculateArea();
             }
-
-            // 【壁描きツール】プレビュー
-            if (appState.currentTool === 'wall' && appState.drawing) {
-                appState.tempPoint = pos;
-                render();
-            }
+            if (appState.currentTool === 'wall' && appState.drawing) appState.tempPoint = pos;
+            render();
         });
 
         window.addEventListener('mouseup', () => {
-            if (appState.drawing) appState.drawing = false;
-            if (appState.selectedObject) {
-                appState.selectedObject.dragging = false;
-                appState.selectedObject.rotating = false;
-            }
+            appState.drawing = false;
+            if (appState.selectedObject) { appState.selectedObject.dragging = false; appState.selectedObject.rotating = false; }
             appState.tempPoint = null;
-            render();
             calculateArea();
+            render();
         });
 
-        // キーボードで選択オブジェクト削除 (Del/Backspace)
         window.addEventListener('keydown', (e) => {
             if (!appState.selectedObject) return;
             if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -215,42 +236,32 @@
                 if (sel.type === 'point') appState.points.splice(sel.index, 1);
                 if (sel.type === 'furniture') appState.furniture.splice(sel.index, 1);
                 appState.selectedObject = null;
-                render();
-                calculateArea();
+                render(); calculateArea();
             }
         });
 
-        // --- ドラッグ＆ドロップ (家具) ---
         function allowDrop(e) { e.preventDefault(); }
         function drag(e, type) { e.dataTransfer.setData("type", type); }
         function drop(e) {
             e.preventDefault();
-            const type = e.dataTransfer.getData("type");
             const rect = canvas.getBoundingClientRect();
-            appState.furniture.push({
-                x: snap(e.clientX - rect.left),
-                y: snap(e.clientY - rect.top),
-                type: type,
-                rotation: 0 // ラジアン
-            });
+            appState.furniture.push({ x: snap(e.clientX - rect.left), y: snap(e.clientY - rect.top), type: e.dataTransfer.getData("type"), rotation: 0 });
             render();
         }
 
-        // --- 描画 (メイン) ---
+        // --- 描画ロジック ---
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 1. 壁の描画 (ハッチング風)
+            // 壁の描画
             if (appState.points.length > 1) {
-                // 壁の塗りつぶし (建築図面風)
-                ctx.fillStyle = '#f1f5f9';
+                ctx.fillStyle = '#f8fafc';
                 ctx.beginPath();
                 ctx.moveTo(appState.points[0].x, appState.points[0].y);
                 appState.points.forEach(p => ctx.lineTo(p.x, p.y));
                 ctx.fill();
 
-                // 壁の輪郭
-                ctx.lineWidth = 12;
+                ctx.lineWidth = 10;
                 ctx.strokeStyle = '#334155';
                 ctx.lineJoin = 'round';
                 ctx.lineCap = 'round';
@@ -259,96 +270,64 @@
                 appState.points.forEach(p => ctx.lineTo(p.x, p.y));
                 if (appState.drawing && appState.tempPoint) {
                     ctx.lineTo(appState.tempPoint.x, appState.tempPoint.y);
-                    // 寸法吹き出し
                     drawDimension(appState.points[appState.points.length-1], appState.tempPoint);
                 }
                 ctx.stroke();
             }
 
-            // 2. 選択・移動ツール用 UI (頂点)
+            // 頂点の描画（選択ツール時）
             if (appState.currentTool === 'select') {
                 appState.points.forEach((p, i) => {
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, hitRadius/2, 0, Math.PI * 2);
-                    ctx.fillStyle = (appState.selectedObject?.type === 'point' && appState.selectedObject.index === i) ? '#3b82f6' : '#fff';
-                    ctx.strokeStyle = '#3b82f6';
+                    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = (appState.selectedObject?.type === 'point' && appState.selectedObject.index === i) ? '#4f46e5' : '#fff';
+                    ctx.strokeStyle = '#4f46e5';
                     ctx.lineWidth = 2;
-                    ctx.fill();
-                    ctx.stroke();
+                    ctx.fill(); ctx.stroke();
                 });
             }
 
-            // 3. 家具の描画 (ベクター表現)
+            // 家具の描画
             appState.furniture.forEach((f, i) => {
                 ctx.save();
                 ctx.translate(f.x, f.y);
                 ctx.rotate(f.rotation);
                 
-                // 選択状態の枠
                 if (appState.selectedObject?.type === 'furniture' && appState.selectedObject.index === i) {
-                    ctx.strokeStyle = '#3b82f6';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([5, 5]);
-                    ctx.strokeRect(-35, -35, 70, 70);
-                    ctx.setLineDash([]);
-                    
-                    // 回転ハンドル
-                    ctx.beginPath();
-                    ctx.arc(0, -45, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = '#fff';
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.setLineDash([2, 2]);
-                    ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(0, -45); ctx.stroke();
-                    ctx.setLineDash([]);
+                    ctx.strokeStyle = '#4f46e5'; ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(-35, -35, 70, 70); ctx.setLineDash([]);
+                    ctx.beginPath(); ctx.arc(0, -45, 6, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke();
                 }
 
-                // 家具本体の描画
                 if (f.type === 'sofa') {
-                    // ソファアイコン
-                    ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5;
-                    drawRoundRect(-30, -20, 60, 40, 5, true); // 本体
-                    drawRoundRect(-30, -20, 60, 10, 2, true); // 背もたれ
-                    drawRoundRect(-30, -20, 10, 40, 2, true); // 肘掛けL
-                    drawRoundRect(20, -20, 10, 40, 2, true); // 肘掛けR
-                } else if (f.type === 'table') {
-                    // 円形テーブル
-                    ctx.fillStyle = '#e7e5e4'; ctx.strokeStyle = '#a8a29e'; ctx.lineWidth = 2;
+                    ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#475569';
+                    drawRoundRect(-30, -20, 60, 40, 4, true);
+                    drawRoundRect(-30, -20, 60, 10, 2, true);
+                } else {
+                    ctx.fillStyle = '#fef3c7'; ctx.strokeStyle = '#d97706';
                     ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                    // 木目風の輪
-                    ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.strokeStyle = '#d6d3d1'; ctx.stroke();
                 }
-                
                 ctx.restore();
             });
         }
 
-        // --- 寸法表示 (吹き出し) ---
         function drawDimension(p1, p2) {
             const distPx = getDist(p1, p2);
             if (distPx < 10) return;
-            const distM = (distPx / pixelToMeter).toFixed(2);
-            
             const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-            
-            ctx.fillStyle = '#1e293b';
-            ctx.font = 'bold 12px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const txt = `${distPx}px (${distM}m)`;
-            const width = ctx.measureText(txt).width + 12;
-            drawRoundRect(mid.x - width/2, mid.y - 22, width, 18, 5, true);
-            ctx.fillStyle = '#fff';
-            ctx.fillText(txt, mid.x, mid.y - 12);
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            const txt = `${(distPx / pixelToMeter).toFixed(2)}m`;
+            const w = ctx.measureText(txt).width + 10;
+            drawRoundRect(mid.x - w/2, mid.y - 25, w, 16, 4, true);
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(txt, mid.x, mid.y - 13);
         }
 
-        // --- 角丸四角形描画ユーティリティ ---
         function drawRoundRect(x, y, w, h, r, fill = false) {
             ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
             if (fill) ctx.fill(); ctx.stroke();
         }
 
-        // --- 面積計算 ---
         function calculateArea() {
             if (appState.points.length < 3) return;
             let area = 0;
@@ -356,18 +335,15 @@
                 let j = (i + 1) % appState.points.length;
                 area += appState.points[i].x * appState.points[j].y - appState.points[j].x * appState.points[i].y;
             }
-            // px^2 -> m^2
-            const realArea = Math.abs(area) / 2 / (pixelToMeter * pixelToMeter);
-            areaDisplay.innerText = realArea.toFixed(2) + " ㎡";
+            areaDisplay.innerText = (Math.abs(area) / 2 / 10000).toFixed(2) + " ㎡";
         }
 
-        // --- データ保存 (localStorage) ---
         function saveToLocal() {
-            localStorage.setItem('savedFloorPlan_v2', JSON.stringify({ points: appState.points, furniture: appState.furniture.map(f => ({...f, img: null})) }));
-            alert('保存しました');
+            localStorage.setItem('floorPlan_vFinal', JSON.stringify({ points: appState.points, furniture: appState.furniture }));
+            alert('ブラウザにデータを保存しました。');
         }
         function loadFromLocal() {
-            const saved = localStorage.getItem('savedFloorPlan_v2');
+            const saved = localStorage.getItem('floorPlan_vFinal');
             if (saved) {
                 const data = JSON.parse(saved);
                 appState.points = data.points || [];
@@ -376,12 +352,11 @@
             }
         }
         function clearAll() {
-            if(confirm('リセットしますか？')) {
+            if(confirm('全ての図面を消去しますか？')) {
                 appState.points = []; appState.furniture = []; appState.selectedObject = null;
                 render(); areaDisplay.innerText = "0.00 ㎡";
             }
         }
     </script>
 </body>
-</html>
 </html>
