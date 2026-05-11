@@ -179,8 +179,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="setup-logo">間取りメーカー</div>
     <div class="setup-sub">ULTRA EDITION — Floor Plan Creator</div>
     <div class="floor-btns">
-      <button class="floor-btn" onclick="initApp(1)">
+      <button class="floor-btn" onclick="initApp(1)" style="position:relative;border-color:rgba(196,163,90,0.5)">
         <span class="num">1F</span><span class="lbl">平屋</span>
+        <span style="position:absolute;top:-8px;right:-8px;background:var(--gold);color:#0D0D0F;font-size:9px;font-weight:900;padding:2px 7px;border-radius:20px;letter-spacing:1px;white-space:nowrap">3LDK付き</span>
       </button>
       <button class="floor-btn" onclick="initApp(2)">
         <span class="num">2F</span><span class="lbl">二階建</span>
@@ -190,6 +191,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       </button>
     </div>
     <div class="setup-note">ドラッグ移動 ／ 角リサイズ ／ 多階層対応 ／ AI パース生成<br>3Dプレビュー ／ お気に入り保存 ／ SNS シェア</div>
+    <div style="margin-top:16px;padding:12px 16px;background:rgba(196,163,90,0.08);border:1px solid rgba(196,163,90,0.3);border-radius:10px;font-size:11px;color:var(--gold);letter-spacing:1px;line-height:1.9;text-align:left">
+      ✦ <b>平屋（1F）</b>を選択すると <b>3LDK サンプル平面図</b> が自動表示されます<br>
+      <span style="color:var(--text3);font-size:10px">そのまま編集・追加・削除してご利用ください</span>
+    </div>
   </div>
 </div>
 
@@ -411,10 +416,101 @@ const orbit = { theta:0.7, phi:0.85, radius:26, dragging:false, lx:0, ly:0 };
 // ══════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════
+// ── 3LDK デモデータ（平屋）────────────────────────────────────────────────────
+// グリッド 20px = 1m。キャンバスは初期 ~900×680px。左上余白40px で配置。
+// 全体フットプリント: 幅520px(26m) × 高さ480px(24m) → 約62㎡
+function make3LDKTemplate() {
+  // ┌─────────────────────────────────────┐
+  // │  LDK(20×12m)         │ 洋室1(8×8m) │
+  // │                       │             │
+  // ├──────────┬──────────┬─┤─────────────┤
+  // │ 洋室2    │ 洋室3    │ │ 浴室  │WC   │
+  // │ (8×8m)  │ (8×8m)  │ │       │     │
+  // ├──────────┴──────────┴─┼───────┴─────┤
+  // │    玄関(8×4m)         │ 収納(6×4m) │
+  // └─────────────────────────────────────┘
+  const OX = 40, OY = 40; // origin offset
+
+  const rooms = [
+    // LDK: 幅320px(16m) × 高さ200px(10m)  ← 広めのLDK
+    { id:1,  name:'LDK',    x:OX,       y:OY,       w:320, h:200 },
+    // 洋室1: 幅180px(9m) × 高さ200px(10m)
+    { id:2,  name:'寝室',   x:OX+320,   y:OY,       w:180, h:200 },
+    // 洋室2: 幅160px(8m) × 高さ160px(8m)
+    { id:3,  name:'洋室2',  x:OX,       y:OY+200,   w:160, h:160 },
+    // 洋室3: 幅160px(8m) × 高さ160px(8m)
+    { id:4,  name:'洋室3',  x:OX+160,   y:OY+200,   w:160, h:160 },
+    // 浴室: 幅120px(6m) × 高さ100px(5m)
+    { id:5,  name:'浴室',   x:OX+320,   y:OY+200,   w:120, h:100 },
+    // トイレ: 幅60px(3m) × 高さ100px(5m)
+    { id:6,  name:'トイレ', x:OX+440,   y:OY+200,   w:60,  h:100 },
+    // 玄関: 幅160px(8m) × 高さ80px(4m)
+    { id:7,  name:'玄関',   x:OX+160,   y:OY+360,   w:160, h:80  },
+    // 収納: 幅120px(6m) × 高さ80px(4m)
+    { id:8,  name:'収納',   x:OX+320,   y:OY+300,   w:180, h:140 },
+  ];
+
+  // 外周壁・主要間仕切り壁（x1,y1→x2,y2）
+  const walls = [
+    // 外周 北辺
+    {id:101,x1:OX,       y1:OY,       x2:OX+500,  y2:OY      },
+    // 外周 東辺
+    {id:102,x1:OX+500,   y1:OY,       x2:OX+500,  y2:OY+440  },
+    // 外周 南辺
+    {id:103,x1:OX,       y1:OY+440,   x2:OX+500,  y2:OY+440  },
+    // 外周 西辺
+    {id:104,x1:OX,       y1:OY,       x2:OX,      y2:OY+440  },
+    // LDK と 寝室の間仕切り（縦）
+    {id:105,x1:OX+320,   y1:OY,       x2:OX+320,  y2:OY+200  },
+    // LDK と 洋室2/3の間仕切り（横）
+    {id:106,x1:OX,       y1:OY+200,   x2:OX+320,  y2:OY+200  },
+    // 洋室2 と 洋室3 の間仕切り（縦）
+    {id:107,x1:OX+160,   y1:OY+200,   x2:OX+160,  y2:OY+360  },
+    // 浴室 と 洋室3の間仕切り（縦）
+    {id:108,x1:OX+320,   y1:OY+200,   x2:OX+320,  y2:OY+440  },
+    // 浴室 と トイレの間仕切り（縦）
+    {id:109,x1:OX+440,   y1:OY+200,   x2:OX+440,  y2:OY+300  },
+    // 浴室 と 収納の間仕切り（横）
+    {id:110,x1:OX+320,   y1:OY+300,   x2:OX+500,  y2:OY+300  },
+    // 洋室2/3 と 玄関の間仕切り（横）
+    {id:111,x1:OX,       y1:OY+360,   x2:OX+320,  y2:OY+360  },
+    // 玄関 西端（縦）
+    {id:112,x1:OX+160,   y1:OY+360,   x2:OX+160,  y2:OY+440  },
+    // 玄関 東端（縦）
+    {id:113,x1:OX+320,   y1:OY+360,   x2:OX+320,  y2:OY+440  },
+  ];
+
+  // ドア（代表的な箇所）
+  const doors = [
+    {id:201,x:OX+40,   y:OY+200, size:60,angle:90},   // LDK→洋室2
+    {id:202,x:OX+200,  y:OY+200, size:60,angle:90},   // LDK→洋室3
+    {id:203,x:OX+320,  y:OY+80,  size:60,angle:0},    // LDK→寝室
+    {id:204,x:OX+340,  y:OY+200, size:60,angle:90},   // 寝室→浴室方向
+    {id:205,x:OX+240,  y:OY+360, size:60,angle:90},   // 玄関→室内
+  ];
+
+  // 窓（外周壁に配置）
+  const windows = [
+    {id:301,x:OX+60,   y:OY,     size:100,angle:0},   // LDK 北窓
+    {id:302,x:OX+200,  y:OY,     size:80, angle:0},   // LDK 北窓2
+    {id:303,x:OX,      y:OY+80,  size:80, angle:90},  // LDK 西窓
+    {id:304,x:OX+500,  y:OY+80,  size:80, angle:90},  // 寝室 東窓
+    {id:305,x:OX,      y:OY+240, size:80, angle:90},  // 洋室2 西窓
+    {id:306,x:OX+60,   y:OY+440, size:80, angle:0},   // 玄関 南窓
+    {id:307,x:OX+380,  y:OY,     size:80, angle:0},   // 寝室 北窓
+  ];
+
+  nextRoomId = 9;
+  return { rooms, walls, doors, windows };
+}
+
 function initApp(n) {
   state.floors = n;
   for (let i = 1; i <= n; i++) {
-    state.floorData[i] = { rooms:[], walls:[], doors:[], windows:[] };
+    // 1階は平屋(n===1)のとき3LDKテンプレートをプリロード
+    state.floorData[i] = (i === 1 && n === 1)
+      ? make3LDKTemplate()
+      : { rooms:[], walls:[], doors:[], windows:[] };
     const btn = document.createElement('button');
     btn.className = 'ftab' + (i===1?' active':'');
     btn.textContent = i+'F';
@@ -426,9 +522,11 @@ function initApp(n) {
   resizeCanvas();
   saveHistory();
   render();
+  updateStats();
   buildStyleGrid();
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('keydown', onKey);
+  if (n === 1) notify('3LDK 平面図をロードしました 🏠');
 }
 
 function switchFloor(n) {
@@ -453,6 +551,7 @@ function resizeCanvas() {
   cv.width  = wrap.clientWidth  || 900;
   cv.height = wrap.clientHeight || 680;
   render();
+  drawRulers();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1229,9 +1328,8 @@ try {
   if(saved){ const d=JSON.parse(saved); if(d.favorites) state.favorites=d.favorites; }
 } catch(e){}
 
-// Post-resize: draw rulers
-const origResize=resizeCanvas;
-window.resizeCanvas=function(){ resizeCanvas(); drawRulers(); };
+// Draw rulers after first render (no override needed — resizeCanvas already calls render)
+drawRulers();
 </script>
 </body>
 </html>
