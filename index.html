@@ -3,67 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Floor Planner Pro</title>
+    <title>Smart Floor Planner V2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
     <style>
-        body { background-color: #f3f4f6; }
+        body { background-color: #f1f5f9; cursor: default; }
         #canvas-container { position: relative; overflow: hidden; }
-        canvas { background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px; touch-action: none; }
-        .furniture-item { cursor: grab; transition: transform 0.2s; }
-        .furniture-item:active { cursor: grabbing; transform: scale(1.1); }
-        #three-container { display: none; background: #000; }
+        canvas { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; touch-action: none; cursor: crosshair;}
+        .furniture-item { cursor: grab; }
+        .active-tool { border-color: #3b82f6; background-color: #eff6ff; color: #1d4ed8;}
     </style>
 </head>
-<body class="flex flex-col h-screen">
+<body class="flex flex-col h-screen select-none text-slate-900">
 
     <!-- ヘッダー -->
-    <header class="bg-slate-800 text-white p-4 flex justify-between items-center shadow-lg z-10">
-        <div class="flex items-center gap-4">
-            <h1 class="text-xl font-bold tracking-tight">Floor Planner Pro</h1>
-            <nav class="flex bg-slate-700 rounded-lg p-1">
-                <button onclick="switchView('2d')" id="btn-2d" class="px-4 py-1 rounded bg-blue-500 text-white text-sm">2D図面</button>
-                <button onclick="switchView('3d')" id="btn-3d" class="px-4 py-1 rounded text-slate-300 text-sm">3D内覧</button>
-            </nav>
+    <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center shadow-sm z-10">
+        <div class="flex items-center gap-3">
+            <span class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">S</span>
+            <h1 class="text-xl font-extrabold tracking-tight">Smart <span class="font-normal text-slate-500">Floor Planner <span class="text-xs bg-slate-100 px-2 py-1 rounded">V2.0</span></span></h1>
         </div>
-        <div class="flex gap-3">
-            <button onclick="saveToLocal()" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded text-sm transition font-medium">保存</button>
-            <button onclick="clearAll()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm transition">リセット</button>
+        <div class="flex gap-2">
+            <button onclick="saveToLocal()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-xl text-white text-sm transition font-semibold shadow">保存</button>
+            <button onclick="clearAll()" class="bg-slate-100 hover:bg-slate-200 px-5 py-2.5 rounded-xl text-slate-700 text-sm transition">リセット</button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         <!-- サイドツールバー -->
-        <aside class="w-72 bg-white border-r border-gray-200 p-6 flex flex-col gap-8 shadow-sm z-10">
+        <aside class="w-72 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 shadow-inner z-10">
             <div>
-                <h3 class="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">家具パーツ (Drag & Drop)</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <div draggable="true" ondragstart="drag(event, 'sofa')" class="furniture-item border p-3 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50">
-                        <div class="w-10 h-6 bg-slate-400 rounded-sm"></div>
-                        <span class="text-xs text-gray-600 font-medium">ソファ</span>
+                <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">ツール</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="tool-wall" onclick="setTool('wall')" class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 active-tool">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path></svg>
+                        <span class="text-xs font-semibold">壁を描く</span>
+                    </button>
+                    <button id="tool-select" onclick="setTool('select')" class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7l-2.99 2.99a3 3 0 000 4.24l8.49 8.49a3 3 0 004.24 0l8.49-8.49a3 3 0 000-4.24L21 7M7 7l8.49 8.49M7 7l8.48-8.48a3 3 0 014.24 0l8.48 8.48M7 7H3"></path></svg>
+                        <span class="text-xs font-semibold">選択・移動</span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">家具パーツ (Drag & Drop)</h3>
+                <div class="grid grid-cols-1 gap-3">
+                    <div draggable="true" ondragstart="drag(event, 'sofa')" class="furniture-item border border-slate-200 p-4 rounded-xl flex items-center gap-4 hover:bg-slate-50 hover:border-slate-300">
+                        <div class="w-14 h-8 border-2 border-slate-600 rounded-sm relative bg-slate-50 flex items-center justify-center">
+                            <div class="absolute -top-1.5 w-10 h-3 bg-slate-600 rounded-sm"></div>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-700">ソファ (3人掛け)</span>
                     </div>
-                    <div draggable="true" ondragstart="drag(event, 'table')" class="furniture-item border p-3 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50">
-                        <div class="w-8 h-8 bg-amber-600 rounded-full"></div>
-                        <span class="text-xs text-gray-600 font-medium">テーブル</span>
+                    <div draggable="true" ondragstart="drag(event, 'table')" class="furniture-item border border-slate-200 p-4 rounded-xl flex items-center gap-4 hover:bg-slate-50 hover:border-slate-300">
+                        <div class="w-12 h-12 border-2 border-amber-800 rounded-full bg-amber-50 shadow-inner"></div>
+                        <span class="text-xs font-semibold text-slate-700">円形テーブル</span>
                     </div>
                 </div>
             </div>
             
-            <div class="mt-auto bg-slate-900 text-white p-5 rounded-2xl shadow-inner">
-                <p class="text-[10px] text-slate-400 mb-1 uppercase font-bold">Estimated Area</p>
-                <p id="area-display" class="text-3xl font-mono font-bold text-blue-400">0.00 <span class="text-sm font-normal text-slate-500 ml-1">㎡</span></p>
+            <div class="mt-auto bg-slate-800 text-white p-5 rounded-2xl shadow-xl">
+                <p class="text-[10px] text-slate-400 mb-1 uppercase font-extrabold tracking-widest">現在の面積</p>
+                <p id="area-display" class="text-3xl font-extrabold text-blue-300">0.00 <span class="text-sm font-medium text-slate-500 ml-1">㎡</span></p>
             </div>
         </aside>
 
         <!-- メインコンテンツ -->
-        <main class="flex-1 relative bg-gray-200 p-8 flex justify-center items-center">
-            <!-- 2D Canvas -->
+        <main class="flex-1 relative bg-slate-100 p-8 flex justify-center items-center">
             <div id="canvas-container" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <canvas id="floorPlanCanvas" width="800" height="600" class="shadow-2xl rounded border border-gray-300 bg-white"></canvas>
+                <canvas id="floorPlanCanvas" width="900" height="700" class="shadow-2xl rounded-sm border border-slate-200 bg-white"></canvas>
             </div>
-            <!-- 3D Container -->
-            <div id="three-container" class="absolute inset-0 w-full h-full"></div>
         </main>
     </div>
 
@@ -71,185 +78,310 @@
         const canvas = document.getElementById('floorPlanCanvas');
         const ctx = canvas.getContext('2d');
         const areaDisplay = document.getElementById('area-display');
-        const threeContainer = document.getElementById('three-container');
 
-        let points = [];
-        let furniture = [];
-        let drawing = false;
+        // アプリの状態
+        let appState = {
+            points: [], 
+            furniture: [],
+            currentTool: 'wall', // 'wall', 'select'
+            drawing: false,
+            tempPoint: null,
+            selectedObject: null, // type: 'point'|'furniture', index: idx, dragging: bool, rotating: bool
+        };
+
         const snapSize = 20;
+        const hitRadius = 15; // オブジェクト選択の当たり判定範囲
+        const pixelToMeter = 100; // 100px = 1m とする
 
-        // グリッドスナップ
+        // --- 初期化 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocal();
+            setTool('wall'); // デフォルトは壁描き
+        });
+
+        // --- ユーティリティ ---
         const snap = (pos) => Math.round(pos / snapSize) * snapSize;
-
-        // --- 描画ロジック ---
-        canvas.addEventListener('mousedown', (e) => {
-            if(window.currentView === '3d') return;
-            drawing = true;
+        const getMousePos = (e) => {
             const rect = canvas.getBoundingClientRect();
-            points.push({ x: snap(e.clientX - rect.left), y: snap(e.clientY - rect.top) });
-            render2D();
+            return { x: snap(e.clientX - rect.left), y: snap(e.clientY - rect.top) };
+        };
+        const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+        // --- ツール選択 ---
+        function setTool(tool) {
+            appState.currentTool = tool;
+            appState.selectedObject = null;
+            document.querySelectorAll('aside button').forEach(b => b.classList.remove('active-tool'));
+            document.getElementById(`tool-${tool}`).classList.add('active-tool');
+            if(tool === 'select') canvas.style.cursor = 'default';
+            else canvas.style.cursor = 'crosshair';
+            render();
+        }
+
+        // --- マウスイベント処理 ---
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(e);
+
+            // 【選択ツール】オブジェクト選択
+            if (appState.currentTool === 'select') {
+                // 1. 家具の回転ハンドル判定
+                if (appState.selectedObject?.type === 'furniture') {
+                    const f = appState.furniture[appState.selectedObject.index];
+                    const rotHandle = {
+                        x: f.x + Math.sin(f.rotation) * 45,
+                        y: f.y - Math.cos(f.rotation) * 45
+                    };
+                    if (getDist(pos, rotHandle) < hitRadius) {
+                        appState.selectedObject.rotating = true;
+                        return;
+                    }
+                }
+                
+                // 2. 家具本体判定
+                for (let i = appState.furniture.length - 1; i >= 0; i--) {
+                    if (getDist(pos, appState.furniture[i]) < 30) {
+                        appState.selectedObject = { type: 'furniture', index: i, dragging: true, offset: { x: pos.x - appState.furniture[i].x, y: pos.y - appState.furniture[i].y } };
+                        render();
+                        return;
+                    }
+                }
+
+                // 3. 壁の頂点判定
+                for (let i = 0; i < appState.points.length; i++) {
+                    if (getDist(pos, appState.points[i]) < hitRadius) {
+                        appState.selectedObject = { type: 'point', index: i, dragging: true };
+                        render();
+                        return;
+                    }
+                }
+
+                // 何も選択しなかった場合
+                appState.selectedObject = null;
+                render();
+            }
+
+            // 【壁描きツール】頂点追加
+            if (appState.currentTool === 'wall') {
+                appState.drawing = true;
+                appState.points.push(pos);
+                render();
+            }
         });
 
         canvas.addEventListener('mousemove', (e) => {
-            if (!drawing) return;
-            const rect = canvas.getBoundingClientRect();
-            render2D(snap(e.clientX - rect.left), snap(e.clientY - rect.top));
+            const pos = getMousePos(e);
+
+            // 【選択ツール】移動・回転
+            if (appState.currentTool === 'select' && appState.selectedObject) {
+                const sel = appState.selectedObject;
+                
+                if (sel.dragging) {
+                    if (sel.type === 'point') appState.points[sel.index] = pos;
+                    if (sel.type === 'furniture') {
+                        appState.furniture[sel.index].x = pos.x - sel.offset.x;
+                        appState.furniture[sel.index].y = pos.y - sel.offset.y;
+                    }
+                } else if (sel.rotating) {
+                    const f = appState.furniture[sel.index];
+                    f.rotation = Math.atan2(pos.y - f.y, pos.x - f.x) + Math.PI / 2;
+                }
+                render();
+                calculateArea();
+            }
+
+            // 【壁描きツール】プレビュー
+            if (appState.currentTool === 'wall' && appState.drawing) {
+                appState.tempPoint = pos;
+                render();
+            }
         });
 
         window.addEventListener('mouseup', () => {
-            if (drawing) {
-                drawing = false;
+            if (appState.drawing) appState.drawing = false;
+            if (appState.selectedObject) {
+                appState.selectedObject.dragging = false;
+                appState.selectedObject.rotating = false;
+            }
+            appState.tempPoint = null;
+            render();
+            calculateArea();
+        });
+
+        // キーボードで選択オブジェクト削除 (Del/Backspace)
+        window.addEventListener('keydown', (e) => {
+            if (!appState.selectedObject) return;
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                const sel = appState.selectedObject;
+                if (sel.type === 'point') appState.points.splice(sel.index, 1);
+                if (sel.type === 'furniture') appState.furniture.splice(sel.index, 1);
+                appState.selectedObject = null;
+                render();
                 calculateArea();
             }
         });
 
-        function render2D(curX = null, curY = null) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // 壁の描画
-            if (points.length > 0) {
-                ctx.beginPath();
-                ctx.lineWidth = 10;
-                ctx.strokeStyle = '#1e293b';
-                ctx.lineJoin = 'round';
-                ctx.moveTo(points[0].x, points[0].y);
-                points.forEach(p => ctx.lineTo(p.x, p.y));
-                if (curX !== null) {
-                    ctx.lineTo(curX, curY);
-                    ctx.setLineDash([5, 5]);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                } else {
-                    ctx.stroke();
-                }
-            }
-
-            // 家具の描画
-            furniture.forEach(item => {
-                ctx.fillStyle = item.type === 'sofa' ? '#94a3b8' : '#d97706';
-                ctx.fillRect(item.x - 20, item.y - 20, 40, 40);
-                ctx.strokeStyle = '#fff';
-                ctx.strokeRect(item.x - 20, item.y - 20, 40, 40);
-            });
-        }
-
-        // --- ドラッグ＆ドロップ ---
+        // --- ドラッグ＆ドロップ (家具) ---
         function allowDrop(e) { e.preventDefault(); }
         function drag(e, type) { e.dataTransfer.setData("type", type); }
         function drop(e) {
             e.preventDefault();
             const type = e.dataTransfer.getData("type");
             const rect = canvas.getBoundingClientRect();
-            furniture.push({
+            appState.furniture.push({
                 x: snap(e.clientX - rect.left),
                 y: snap(e.clientY - rect.top),
-                type: type
+                type: type,
+                rotation: 0 // ラジアン
             });
-            render2D();
+            render();
+        }
+
+        // --- 描画 (メイン) ---
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. 壁の描画 (ハッチング風)
+            if (appState.points.length > 1) {
+                // 壁の塗りつぶし (建築図面風)
+                ctx.fillStyle = '#f1f5f9';
+                ctx.beginPath();
+                ctx.moveTo(appState.points[0].x, appState.points[0].y);
+                appState.points.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.fill();
+
+                // 壁の輪郭
+                ctx.lineWidth = 12;
+                ctx.strokeStyle = '#334155';
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(appState.points[0].x, appState.points[0].y);
+                appState.points.forEach(p => ctx.lineTo(p.x, p.y));
+                if (appState.drawing && appState.tempPoint) {
+                    ctx.lineTo(appState.tempPoint.x, appState.tempPoint.y);
+                    // 寸法吹き出し
+                    drawDimension(appState.points[appState.points.length-1], appState.tempPoint);
+                }
+                ctx.stroke();
+            }
+
+            // 2. 選択・移動ツール用 UI (頂点)
+            if (appState.currentTool === 'select') {
+                appState.points.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, hitRadius/2, 0, Math.PI * 2);
+                    ctx.fillStyle = (appState.selectedObject?.type === 'point' && appState.selectedObject.index === i) ? '#3b82f6' : '#fff';
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 2;
+                    ctx.fill();
+                    ctx.stroke();
+                });
+            }
+
+            // 3. 家具の描画 (ベクター表現)
+            appState.furniture.forEach((f, i) => {
+                ctx.save();
+                ctx.translate(f.x, f.y);
+                ctx.rotate(f.rotation);
+                
+                // 選択状態の枠
+                if (appState.selectedObject?.type === 'furniture' && appState.selectedObject.index === i) {
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(-35, -35, 70, 70);
+                    ctx.setLineDash([]);
+                    
+                    // 回転ハンドル
+                    ctx.beginPath();
+                    ctx.arc(0, -45, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.setLineDash([2, 2]);
+                    ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(0, -45); ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // 家具本体の描画
+                if (f.type === 'sofa') {
+                    // ソファアイコン
+                    ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5;
+                    drawRoundRect(-30, -20, 60, 40, 5, true); // 本体
+                    drawRoundRect(-30, -20, 60, 10, 2, true); // 背もたれ
+                    drawRoundRect(-30, -20, 10, 40, 2, true); // 肘掛けL
+                    drawRoundRect(20, -20, 10, 40, 2, true); // 肘掛けR
+                } else if (f.type === 'table') {
+                    // 円形テーブル
+                    ctx.fillStyle = '#e7e5e4'; ctx.strokeStyle = '#a8a29e'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    // 木目風の輪
+                    ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.strokeStyle = '#d6d3d1'; ctx.stroke();
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        // --- 寸法表示 (吹き出し) ---
+        function drawDimension(p1, p2) {
+            const distPx = getDist(p1, p2);
+            if (distPx < 10) return;
+            const distM = (distPx / pixelToMeter).toFixed(2);
+            
+            const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+            
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const txt = `${distPx}px (${distM}m)`;
+            const width = ctx.measureText(txt).width + 12;
+            drawRoundRect(mid.x - width/2, mid.y - 22, width, 18, 5, true);
+            ctx.fillStyle = '#fff';
+            ctx.fillText(txt, mid.x, mid.y - 12);
+        }
+
+        // --- 角丸四角形描画ユーティリティ ---
+        function drawRoundRect(x, y, w, h, r, fill = false) {
+            ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+            if (fill) ctx.fill(); ctx.stroke();
         }
 
         // --- 面積計算 ---
         function calculateArea() {
-            if (points.length < 3) return;
+            if (appState.points.length < 3) return;
             let area = 0;
-            for (let i = 0; i < points.length; i++) {
-                let j = (i + 1) % points.length;
-                area += points[i].x * points[j].y - points[j].x * points[i].y;
+            for (let i = 0; i < appState.points.length; i++) {
+                let j = (i + 1) % appState.points.length;
+                area += appState.points[i].x * appState.points[j].y - appState.points[j].x * appState.points[i].y;
             }
-            const realArea = Math.abs(area) / 2 / 10000;
+            // px^2 -> m^2
+            const realArea = Math.abs(area) / 2 / (pixelToMeter * pixelToMeter);
             areaDisplay.innerText = realArea.toFixed(2) + " ㎡";
         }
 
         // --- データ保存 (localStorage) ---
         function saveToLocal() {
-            const data = { points, furniture };
-            localStorage.setItem('savedFloorPlan', JSON.stringify(data));
-            alert('ブラウザに保存しました');
+            localStorage.setItem('savedFloorPlan_v2', JSON.stringify({ points: appState.points, furniture: appState.furniture.map(f => ({...f, img: null})) }));
+            alert('保存しました');
         }
-
         function loadFromLocal() {
-            const saved = localStorage.getItem('savedFloorPlan');
+            const saved = localStorage.getItem('savedFloorPlan_v2');
             if (saved) {
                 const data = JSON.parse(saved);
-                points = data.points || [];
-                furniture = data.furniture || [];
-                render2D();
-                calculateArea();
+                appState.points = data.points || [];
+                appState.furniture = data.furniture || [];
+                render(); calculateArea();
             }
         }
-
         function clearAll() {
             if(confirm('リセットしますか？')) {
-                points = []; furniture = [];
-                render2D();
-                areaDisplay.innerText = "0.00 ㎡";
+                appState.points = []; appState.furniture = []; appState.selectedObject = null;
+                render(); areaDisplay.innerText = "0.00 ㎡";
             }
         }
-
-        // --- 3D連携 (Three.js) ---
-        let scene, camera, renderer;
-        function init3D() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111827);
-            camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 2000);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(threeContainer.clientWidth, threeContainer.clientHeight);
-            threeContainer.innerHTML = '';
-            threeContainer.appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(200, 500, 300);
-            scene.add(directionalLight);
-
-            // 壁の生成
-            if (points.length > 1) {
-                const shape = new THREE.Shape();
-                shape.moveTo(points[0].x - 400, -(points[0].y - 300));
-                points.forEach(p => shape.lineTo(p.x - 400, -(p.y - 300)));
-                
-                const extrudeSettings = { depth: 50, bevelEnabled: false };
-                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                const material = new THREE.MeshStandardMaterial({ color: 0x64748b, wireframe: false });
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.rotation.x = -Math.PI / 2; // 床に寝かせる
-                scene.add(mesh);
-            }
-
-            camera.position.set(0, 500, 500);
-            camera.lookAt(0, 0, 0);
-
-            const animate = () => {
-                requestAnimationFrame(animate);
-                renderer.render(scene, camera);
-            };
-            animate();
-        }
-
-        // ビュー切り替え
-        window.currentView = '2d';
-        function switchView(view) {
-            window.currentView = view;
-            const btn2d = document.getElementById('btn-2d');
-            const btn3d = document.getElementById('btn-3d');
-            
-            if (view === '3d') {
-                threeContainer.style.display = 'block';
-                document.getElementById('canvas-container').style.display = 'none';
-                btn3d.className = "px-4 py-1 rounded bg-blue-500 text-white text-sm";
-                btn2d.className = "px-4 py-1 rounded text-slate-300 text-sm";
-                init3D();
-            } else {
-                threeContainer.style.display = 'none';
-                document.getElementById('canvas-container').style.display = 'block';
-                btn2d.className = "px-4 py-1 rounded bg-blue-500 text-white text-sm";
-                btn3d.className = "px-4 py-1 rounded text-slate-300 text-sm";
-            }
-        }
-
-        // 初回読み込み
-        loadFromLocal();
     </script>
 </body>
+</html>
 </html>
