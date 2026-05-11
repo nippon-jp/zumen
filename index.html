@@ -1,264 +1,1237 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Home Builder v3.0</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #f1f5f9; overflow: hidden; }
-        canvas { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; cursor: crosshair; }
-        .active-floor { background-color: #4f46e5 !important; color: white !important; }
-        .tool-btn { transition: all 0.2s; }
-        .tool-btn:hover { background-color: #eef2ff; border-color: #6366f1; }
-        #setup-overlay { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>間取りパースメーカー ULTRA</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D0D0F;--panel:#141418;--panel2:#1C1C22;--border:#2A2A35;
+  --gold:#C4A35A;--gold2:#E8D5A3;--gold-dim:#6B5730;
+  --blue:#4A9EFF;--green:#4AFF9E;--red:#FF4A6B;
+  --text:#F0EDE8;--text2:#8A8490;--text3:#4A4550;
+  --wall:#E8E0D0;--floor-h:52px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif}
+
+/* ── SETUP OVERLAY ─────────────────────── */
+#setup{position:fixed;inset:0;z-index:999;background:radial-gradient(ellipse at 30% 40%,#1A1430 0%,#0D0D0F 70%);display:flex;align-items:center;justify-content:center}
+#setup::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C4A35A' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.setup-card{position:relative;z-index:1;text-align:center;max-width:520px;width:90%;padding:56px 48px;background:linear-gradient(145deg,#1C1C28,#141420);border:1px solid var(--border);border-radius:24px;box-shadow:0 0 80px rgba(196,163,90,0.1),0 40px 80px rgba(0,0,0,0.6)}
+.setup-logo{font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:6px;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:8px}
+.setup-sub{color:var(--text2);font-size:12px;letter-spacing:4px;text-transform:uppercase;margin-bottom:40px}
+.floor-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px}
+.floor-btn{padding:28px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:16px;cursor:pointer;transition:all .25s;color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif}
+.floor-btn:hover{border-color:var(--gold);background:rgba(196,163,90,0.08);transform:translateY(-3px);box-shadow:0 12px 30px rgba(196,163,90,0.15)}
+.floor-btn .num{font-family:'Bebas Neue',sans-serif;font-size:44px;color:var(--gold);display:block;line-height:1}
+.floor-btn .lbl{font-size:11px;color:var(--text2);letter-spacing:2px;margin-top:4px;display:block}
+.setup-note{font-size:11px;color:var(--text3);line-height:1.8}
+
+/* ── HEADER ────────────────────────────── */
+#header{height:var(--floor-h);background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:100;position:relative}
+.logo-sm{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:4px;color:var(--gold);white-space:nowrap}
+.divider{width:1px;height:24px;background:var(--border)}
+#floor-tabs{display:flex;gap:4px;flex:1}
+.ftab{padding:6px 18px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;font-size:12px;font-weight:700;color:var(--text2);background:transparent;transition:all .2s;letter-spacing:1px}
+.ftab.active{background:var(--gold);color:#0D0D0F;border-color:var(--gold)}
+.ftab:not(.active):hover{border-color:var(--gold-dim);color:var(--gold)}
+.hdr-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.hbtn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;font-size:11px;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;transition:all .2s;letter-spacing:1px}
+.hbtn:hover{border-color:var(--gold);color:var(--gold)}
+.hbtn.primary{background:var(--gold);color:#0D0D0F;border-color:var(--gold)}
+.hbtn.primary:hover{background:var(--gold2)}
+
+/* ── MODE TABS ─────────────────────────── */
+#mode-bar{height:40px;background:var(--panel2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:2px}
+.mtab{padding:4px 16px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;color:var(--text2);background:transparent;border:none;transition:all .2s;letter-spacing:1px;font-family:'Zen Kaku Gothic New',sans-serif}
+.mtab.active{background:rgba(196,163,90,0.15);color:var(--gold)}
+.mtab:hover:not(.active){color:var(--text)}
+.mode-sep{width:1px;height:16px;background:var(--border);margin:0 8px}
+
+/* ── LAYOUT ────────────────────────────── */
+#app-body{display:flex;height:calc(100vh - var(--floor-h) - 40px);overflow:hidden}
+
+/* ── SIDEBAR ───────────────────────────── */
+#sidebar{width:240px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sb-section{padding:16px;border-bottom:1px solid var(--border)}
+.sb-title{font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+.room-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.room-btn{padding:10px 6px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;transition:all .2s;color:var(--text)}
+.room-btn:hover{border-color:var(--gold);background:rgba(196,163,90,0.06)}
+.room-btn .icon{font-size:18px;display:block;margin-bottom:4px}
+.room-btn .name{font-size:9px;font-weight:700;color:var(--text2);letter-spacing:1px}
+.tool-list{display:flex;flex-direction:column;gap:4px}
+.tool-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;border:1px solid transparent;background:transparent;color:var(--text2);font-size:11px;font-weight:700;transition:all .2s;font-family:'Zen Kaku Gothic New',sans-serif;letter-spacing:1px;width:100%;text-align:left}
+.tool-btn:hover{background:var(--panel2);color:var(--text)}
+.tool-btn.active{background:rgba(196,163,90,0.12);border-color:var(--gold-dim);color:var(--gold)}
+.tool-icon{width:28px;height:28px;border-radius:6px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tool-btn.active .tool-icon{background:rgba(196,163,90,0.2)}
+.prop-panel{padding:16px;border-bottom:1px solid var(--border);display:none}
+.prop-panel.visible{display:block}
+.prop-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.prop-label{font-size:10px;color:var(--text2);font-weight:700;letter-spacing:1px}
+.prop-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)}
+.prop-input{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:11px;width:80px;font-family:'JetBrains Mono',monospace;text-align:right}
+.prop-input:focus{outline:none;border-color:var(--gold)}
+.prop-slider{width:100%;accent-color:var(--gold);margin-top:4px}
+.sb-stats{padding:16px;background:var(--panel2);margin:0;margin-top:auto}
+.stat-big{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--gold);line-height:1}
+.stat-sub{font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
+.stat-tatami{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text2);margin-top:4px}
+.advice-box{margin-top:12px;padding:10px;background:var(--panel);border-radius:8px;border-left:2px solid var(--gold-dim)}
+.advice-text{font-size:10px;color:var(--text2);line-height:1.7}
+#sb-scroll{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+/* ── CANVAS AREA ───────────────────────── */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+#main-canvas{display:block;cursor:crosshair}
+.canvas-hint{position:absolute;bottom:16px;right:16px;background:rgba(20,20,24,0.85);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:10px;color:var(--text3);letter-spacing:1px;pointer-events:none;backdrop-filter:blur(8px)}
+#ruler-h{position:absolute;top:0;left:32px;right:0;height:24px;background:var(--panel);border-bottom:1px solid var(--border);overflow:hidden;pointer-events:none;z-index:10}
+#ruler-v{position:absolute;top:24px;left:0;width:32px;bottom:0;background:var(--panel);border-right:1px solid var(--border);overflow:hidden;pointer-events:none;z-index:10}
+#canvas-inner{position:absolute;top:24px;left:32px;right:0;bottom:0}
+
+/* ── 3D PREVIEW ────────────────────────── */
+#preview-3d{position:absolute;inset:0;display:none}
+#preview-3d.visible{display:block}
+#preview-3d canvas{width:100%!important;height:100%!important}
+.preview-controls{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:10}
+.pctrl-btn{padding:5px 12px;background:rgba(20,20,24,0.9);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:10px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;letter-spacing:1px;backdrop-filter:blur(8px);transition:all .2s}
+.pctrl-btn:hover,.pctrl-btn.active{border-color:var(--gold);color:var(--gold)}
+.preview-info{position:absolute;bottom:12px;left:12px;background:rgba(20,20,24,0.85);border:1px solid var(--border);border-radius:10px;padding:10px 14px;pointer-events:none;backdrop-filter:blur(8px)}
+.pi-row{display:flex;gap:16px;font-size:10px;color:var(--text2)}
+.pi-val{color:var(--gold);font-family:'JetBrains Mono',monospace}
+
+/* ── AI PERSE TAB ─────────────────────── */
+#perse-panel{position:absolute;inset:0;display:none;overflow-y:auto;padding:24px}
+#perse-panel.visible{display:block}
+.style-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.style-card{padding:16px 12px;border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .25s;background:var(--panel2)}
+.style-card:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
+.style-card.active{border-color:var(--gold);background:rgba(196,163,90,0.08);box-shadow:0 0 20px rgba(196,163,90,0.1)}
+.style-card .emoji{font-size:24px;display:block;margin-bottom:6px}
+.style-card .slbl{font-size:11px;font-weight:900;color:var(--text);display:block}
+.style-card .sdesc{font-size:9px;color:var(--text2);margin-top:2px;display:block;letter-spacing:1px}
+.gen-btn{width:100%;padding:16px;border-radius:12px;border:1px solid var(--gold);background:linear-gradient(135deg,rgba(196,163,90,0.15),rgba(196,163,90,0.05));color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:4px;cursor:pointer;transition:all .25s;margin-bottom:20px}
+.gen-btn:hover{background:linear-gradient(135deg,rgba(196,163,90,0.25),rgba(196,163,90,0.1));box-shadow:0 0 30px rgba(196,163,90,0.2)}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+#perse-result{background:var(--panel2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+#perse-result svg{width:100%;height:auto;display:block}
+.perse-footer{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--panel);border-top:1px solid var(--border)}
+
+/* ── FAVORITES ─────────────────────────── */
+#fav-panel{position:absolute;inset:0;display:none;overflow-y:auto;padding:24px}
+#fav-panel.visible{display:block}
+.fav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.fav-card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:all .2s}
+.fav-card:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
+.fav-header{padding:10px 14px;background:var(--panel);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.fav-style{font-size:11px;font-weight:900;color:var(--gold);letter-spacing:1px}
+.fav-date{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.fav-body{padding:12px}
+.fav-body svg{width:100%;height:auto;display:block;border-radius:6px}
+.fav-footer{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.share-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;letter-spacing:1px;transition:all .2s}
+.share-btn:hover{border-color:var(--gold);color:var(--gold)}
+.empty-state{text-align:center;padding:80px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;display:block;margin-bottom:12px;opacity:.4}
+.empty-text{font-size:13px;line-height:2}
+
+/* ── SHARE MODAL ─────────────────────── */
+#share-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px)}
+#share-modal.visible{display:flex}
+.modal-card{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:32px;max-width:380px;width:90%;box-shadow:0 40px 80px rgba(0,0,0,0.6)}
+.modal-title{font-size:16px;font-weight:900;margin-bottom:20px;color:var(--text);letter-spacing:1px}
+.modal-opts{display:flex;flex-direction:column;gap:8px}
+.modal-opt{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s;background:var(--panel2)}
+.modal-opt:hover{border-color:var(--gold-dim);background:rgba(196,163,90,0.06)}
+.modal-opt-icon{font-size:20px;width:36px;text-align:center}
+.modal-opt-label{font-size:12px;font-weight:700;color:var(--text)}
+.modal-cancel{width:100%;margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;letter-spacing:1px}
+.modal-cancel:hover{border-color:var(--red);color:var(--red)}
+
+/* ── SCROLLBAR ──────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── NOTIFICATION ───────────────────── */
+#notif{position:fixed;top:72px;right:16px;z-index:500;pointer-events:none}
+.notif-item{background:var(--panel);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 16px;font-size:11px;color:var(--gold);margin-bottom:6px;transform:translateX(120%);transition:transform .3s;letter-spacing:1px;font-weight:700}
+.notif-item.show{transform:translateX(0)}
+
+/* ── TOOLTIP ───────────────────────── */
+.tip{position:relative}
+.tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#000;color:var(--text);font-size:10px;padding:4px 8px;border-radius:4px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;letter-spacing:1px}
+.tip:hover::after{opacity:1}
+
+/* ── LOADING SPINNER ─────────────────── */
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
 </head>
-<body class="flex flex-col h-screen text-slate-800">
+<body>
 
-    <!-- 初回階数設定オーバーレイ -->
-    <div id="setup-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-center">
-            <h2 class="text-2xl font-bold mb-2">Build Your Home</h2>
-            <p class="text-slate-500 mb-6 text-sm">作成する建物の階数を選択してください</p>
-            <div class="grid grid-cols-3 gap-4 mb-8">
-                <button onclick="initApp(1)" class="p-4 border-2 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition font-bold">1階建</button>
-                <button onclick="initApp(2)" class="p-4 border-2 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition font-bold">2階建</button>
-                <button onclick="initApp(3)" class="p-4 border-2 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition font-bold">3階建</button>
-            </div>
+<!-- SETUP OVERLAY -->
+<div id="setup">
+  <div class="setup-card">
+    <div class="setup-logo">間取りメーカー</div>
+    <div class="setup-sub">ULTRA EDITION — Floor Plan Creator</div>
+    <div class="floor-btns">
+      <button class="floor-btn" onclick="initApp(1)">
+        <span class="num">1F</span><span class="lbl">平屋</span>
+      </button>
+      <button class="floor-btn" onclick="initApp(2)">
+        <span class="num">2F</span><span class="lbl">二階建</span>
+      </button>
+      <button class="floor-btn" onclick="initApp(3)">
+        <span class="num">3F</span><span class="lbl">三階建</span>
+      </button>
+    </div>
+    <div class="setup-note">ドラッグ移動 ／ 角リサイズ ／ 多階層対応 ／ AI パース生成<br>3Dプレビュー ／ お気に入り保存 ／ SNS シェア</div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo-sm">MADORI</div>
+  <div class="divider"></div>
+  <div id="floor-tabs"></div>
+  <div class="hdr-right">
+    <button class="hbtn tip" data-tip="元に戻す (Ctrl+Z)" onclick="undo()">↩ 元に戻す</button>
+    <button class="hbtn tip" data-tip="やり直す (Ctrl+Y)" onclick="redo()">↪ やり直す</button>
+    <div class="divider"></div>
+    <button class="hbtn" onclick="clearFloor()">🗑 クリア</button>
+    <button class="hbtn primary" onclick="saveProject()">💾 保存</button>
+  </div>
+</div>
+
+<!-- MODE BAR -->
+<div id="mode-bar">
+  <button class="mtab active" onclick="setMode('floor')" id="mtab-floor">🏠 間取り作成</button>
+  <button class="mtab" onclick="setMode('struct')" id="mtab-struct">🧱 壁・ドア・窓</button>
+  <div class="mode-sep"></div>
+  <button class="mtab" onclick="setMode('3d')" id="mtab-3d">🧊 3D プレビュー</button>
+  <button class="mtab" onclick="setMode('perse')" id="mtab-perse">🎨 AI パース生成</button>
+  <button class="mtab" onclick="setMode('fav')" id="mtab-fav">♥ お気に入り <span id="fav-count"></span></button>
+</div>
+
+<div id="app-body">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <!-- Mode: floor -->
+    <div id="sb-floor">
+      <div class="sb-section">
+        <div class="sb-title">部屋を追加</div>
+        <div class="room-grid">
+          <button class="room-btn" onclick="addRoom('LDK',200,280,'#2A2418')"><span class="icon">🛋️</span><span class="name">LDK</span></button>
+          <button class="room-btn" onclick="addRoom('寝室',180,220,'#182028')"><span class="icon">🛏️</span><span class="name">寝室</span></button>
+          <button class="room-btn" onclick="addRoom('キッチン',160,200,'#281828')"><span class="icon">🍳</span><span class="name">キッチン</span></button>
+          <button class="room-btn" onclick="addRoom('浴室',140,160,'#182818')"><span class="icon">🛁</span><span class="name">浴室</span></button>
+          <button class="room-btn" onclick="addRoom('トイレ',100,140,'#1C2818')"><span class="icon">🚽</span><span class="name">トイレ</span></button>
+          <button class="room-btn" onclick="addRoom('玄関',120,160,'#28221A')"><span class="icon">🚪</span><span class="name">玄関</span></button>
+          <button class="room-btn" onclick="addRoom('収納',100,120,'#22182A')"><span class="icon">📦</span><span class="name">収納</span></button>
+          <button class="room-btn" onclick="addRoom('庭',240,200,'#182020')"><span class="icon">🌿</span><span class="name">庭</span></button>
         </div>
+      </div>
     </div>
 
-    <!-- ヘッダー -->
-    <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center z-10 shadow-sm">
-        <div class="flex items-center gap-6">
-            <h1 class="text-xl font-black text-indigo-600">HOME BUILDER <span class="text-xs text-slate-400 font-normal">v3.0</span></h1>
-            <div id="floor-tabs" class="flex bg-slate-100 p-1 rounded-xl"></div>
+    <!-- Mode: struct -->
+    <div id="sb-struct" style="display:none">
+      <div class="sb-section">
+        <div class="sb-title">描画ツール</div>
+        <div class="tool-list">
+          <button class="tool-btn active" id="tb-select" onclick="setTool('select')">
+            <span class="tool-icon">↖</span>選択・移動
+          </button>
+          <button class="tool-btn" id="tb-wall" onclick="setTool('wall')">
+            <span class="tool-icon">▬</span>壁を引く
+          </button>
+          <button class="tool-btn" id="tb-door" onclick="setTool('door')">
+            <span class="tool-icon">🚪</span>ドアを配置
+          </button>
+          <button class="tool-btn" id="tb-window" onclick="setTool('window')">
+            <span class="tool-icon">🪟</span>窓を配置
+          </button>
+          <button class="tool-btn" id="tb-erase" onclick="setTool('erase')">
+            <span class="tool-icon">✕</span>削除
+          </button>
         </div>
-        <div class="flex gap-2">
-            <button onclick="undo()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-            </button>
-            <button onclick="saveProject()" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition">保存</button>
-        </div>
-    </header>
-
-    <div class="flex flex-1 overflow-hidden">
-        <!-- サイドパネル -->
-        <aside class="w-80 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 overflow-y-auto shadow-inner">
-            <!-- 部屋追加（レゴ方式） -->
-            <section>
-                <h3 class="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-widest">部屋を追加</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="addRoom(200, 200, 'Living')" class="tool-btn border p-3 rounded-xl flex flex-col items-center gap-1 text-xs font-bold">
-                        <div class="w-8 h-8 bg-blue-100 border-2 border-blue-400 rounded"></div>6畳相当
-                    </button>
-                    <button onclick="addRoom(150, 150, 'Kitchen')" class="tool-btn border p-3 rounded-xl flex flex-col items-center gap-1 text-xs font-bold">
-                        <div class="w-6 h-6 bg-orange-100 border-2 border-orange-400 rounded"></div>DK
-                    </button>
-                </div>
-            </section>
-
-            <!-- 設備追加 -->
-            <section>
-                <h3 class="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-widest">水回り・設備</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <div draggable="true" ondragstart="drag(event, 'bath')" class="cursor-grab border p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition">
-                        <div class="w-8 h-6 border-2 border-cyan-500 rounded-sm bg-cyan-50"></div>
-                        <span class="text-xs font-bold">お風呂</span>
-                    </div>
-                    <div draggable="true" ondragstart="drag(event, 'toilet')" class="cursor-grab border p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition">
-                        <div class="w-6 h-8 border-2 border-slate-400 rounded-full bg-white"></div>
-                        <span class="text-xs font-bold">便器</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 修正ツール -->
-            <section>
-                <h3 class="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-widest">編集モード</h3>
-                <div class="flex gap-2">
-                    <button id="tool-select" onclick="setTool('select')" class="flex-1 p-3 rounded-xl border-2 font-bold text-xs active-tool">移動・変形</button>
-                    <button id="tool-wall" onclick="setTool('wall')" class="flex-1 p-3 rounded-xl border-2 font-bold text-xs">自由描画</button>
-                </div>
-            </section>
-        </aside>
-
-        <!-- メインキャンバス -->
-        <main class="flex-1 relative flex justify-center items-center p-8 overflow-auto bg-slate-200">
-            <div ondrop="drop(event)" ondragover="allowDrop(event)">
-                <canvas id="mainCanvas" width="1000" height="800" class="shadow-2xl rounded-sm bg-white"></canvas>
-            </div>
-        </main>
+      </div>
+      <div id="prop-panel" class="prop-panel">
+        <div class="sb-title">プロパティ</div>
+        <div id="prop-content"></div>
+      </div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('mainCanvas');
-        const ctx = canvas.getContext('2d');
-        const floorTabs = document.getElementById('floor-tabs');
-        
-        let project = {
-            totalFloors: 1,
-            currentFloor: 1,
-            data: {}, // 階ごとのデータ {1: {rooms:[], items:[]}, 2:...}
-            history: [] // Undo用
-        };
+    <!-- Mode: 3d/perse/fav — empty sidebar -->
+    <div id="sb-other" style="display:none;padding:16px">
+      <div class="sb-title" style="margin-bottom:8px">現在の間取り</div>
+      <div id="sb-summary" style="font-size:10px;color:var(--text2);line-height:2"></div>
+    </div>
 
-        let appState = {
-            currentTool: 'select',
-            draggingObj: null,
-            resizingObj: null,
-            drawing: false,
-            points: []
-        };
+    <!-- Stats (always shown) -->
+    <div id="sb-scroll">
+      <div class="sb-stats" style="margin-top:auto">
+        <div class="stat-sub">延床面積（概算）</div>
+        <div class="stat-big" id="stat-area">0.00</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">㎡</div>
+        <div class="stat-tatami" id="stat-tatami">0.0 畳</div>
+        <div class="advice-box">
+          <div class="advice-text" id="advice-text">ユニットを配置して設計を開始してください。</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        const snap = (v) => Math.round(v / 20) * 20;
+  <!-- MAIN CANVAS AREA -->
+  <div id="canvas-wrap">
+    <!-- Rulers -->
+    <div id="ruler-h"></div>
+    <div id="ruler-v"></div>
+    <div id="canvas-inner">
+      <canvas id="main-canvas"></canvas>
+    </div>
+    <div class="canvas-hint" id="canvas-hint">ドラッグ移動 ／ 右下角でリサイズ</div>
 
-        // --- アプリ初期化 ---
-        function initApp(floors) {
-            project.totalFloors = floors;
-            for(let i=1; i<=floors; i++) {
-                project.data[i] = { rooms: [], items: [], walls: [] };
-                const btn = document.createElement('button');
-                btn.className = `px-6 py-2 rounded-lg text-sm font-bold transition ${i===1?'active-floor':''}`;
-                btn.innerText = `${i}F`;
-                btn.id = `tab-f${i}`;
-                btn.onclick = () => switchFloor(i);
-                floorTabs.appendChild(btn);
-            }
-            document.getElementById('setup-overlay').style.display = 'none';
-            saveHistory();
-            render();
-        }
+    <!-- 3D Preview -->
+    <div id="preview-3d">
+      <div class="preview-controls">
+        <button class="pctrl-btn active" onclick="setView3d('persp')">⬡ パース</button>
+        <button class="pctrl-btn" onclick="setView3d('top')">⬛ 上面</button>
+        <button class="pctrl-btn" onclick="setView3d('front')">▬ 正面</button>
+        <button class="pctrl-btn" onclick="setView3d('side')">▌ 側面</button>
+        <div style="width:1px;height:16px;background:var(--border)"></div>
+        <button class="pctrl-btn" id="btn-roof" onclick="toggleRoof()">屋根 ON</button>
+      </div>
+      <div class="preview-info">
+        <div class="pi-row">
+          <span>部屋: <span class="pi-val" id="pi-rooms">0</span></span>
+          <span>壁: <span class="pi-val" id="pi-walls">0</span></span>
+          <span>ドア: <span class="pi-val" id="pi-doors">0</span></span>
+          <span>窓: <span class="pi-val" id="pi-wins">0</span></span>
+          <span>面積: <span class="pi-val" id="pi-area">0</span>㎡</span>
+        </div>
+      </div>
+    </div>
 
-        function switchFloor(floor) {
-            document.querySelectorAll('#floor-tabs button').forEach(b => b.classList.remove('active-floor'));
-            document.getElementById(`tab-f${floor}`).classList.add('active-floor');
-            project.currentFloor = floor;
-            render();
-        }
+    <!-- AI Perse Panel -->
+    <div id="perse-panel">
+      <div style="max-width:760px;margin:0 auto">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:16px;letter-spacing:1px">
+          間取り情報を基にAIが外観パースを生成します。スタイルを選択してください。
+        </div>
+        <div class="style-grid" id="style-grid"></div>
+        <button class="gen-btn" id="gen-btn" onclick="generatePerse()">✦ AI パース生成</button>
+        <div id="perse-result" style="display:none">
+          <div id="perse-svg-wrap"></div>
+          <div class="perse-footer">
+            <span style="font-size:11px;color:var(--text2);letter-spacing:1px" id="perse-style-label"></span>
+            <button class="hbtn primary" onclick="savePerse()">♥ お気に入りに保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        // --- 部屋追加（レゴ） ---
-        function addRoom(w, h, name) {
-            project.data[project.currentFloor].rooms.push({
-                x: 100, y: 100, w: w, h: h, name: name
-            });
-            saveHistory();
-            render();
-        }
+    <!-- Favorites Panel -->
+    <div id="fav-panel">
+      <div id="fav-empty" class="empty-state">
+        <span class="empty-icon">♡</span>
+        <div class="empty-text">まだお気に入りがありません<br>パース生成タブでパースを作成・保存してください</div>
+      </div>
+      <div class="fav-grid" id="fav-grid" style="display:none"></div>
+    </div>
+  </div>
+</div>
 
-        // --- 描画ロジック ---
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const floor = project.data[project.currentFloor];
+<!-- SHARE MODAL -->
+<div id="share-modal">
+  <div class="modal-card">
+    <div class="modal-title">📤 シェア方法を選択</div>
+    <div class="modal-opts" id="share-opts"></div>
+    <button class="modal-cancel" onclick="closeShare()">キャンセル</button>
+  </div>
+</div>
 
-            // 部屋の描画
-            floor.rooms.forEach((room, idx) => {
-                ctx.fillStyle = '#f8fafc';
-                ctx.strokeStyle = '#334155';
-                ctx.lineWidth = 8;
-                ctx.strokeRect(room.x, room.y, room.w, room.h);
-                ctx.fillRect(room.x, room.y, room.w, room.h);
-                
-                // リサイズハンドル
-                if(appState.currentTool === 'select') {
-                    ctx.fillStyle = '#4f46e5';
-                    ctx.fillRect(room.x + room.w - 5, room.y + room.h - 5, 10, 10);
-                }
-            });
+<!-- NOTIFICATIONS -->
+<div id="notif"></div>
 
-            // 設備（アイテム）の描画
-            floor.items.forEach(item => {
-                ctx.save();
-                ctx.translate(item.x, item.y);
-                if(item.type === 'bath') {
-                    ctx.fillStyle = '#ecfeff'; ctx.strokeStyle = '#0891b2';
-                    ctx.strokeRect(-25, -15, 50, 30); ctx.fillRect(-25, -15, 50, 30);
-                } else if(item.type === 'toilet') {
-                    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#64748b';
-                    ctx.beginPath(); ctx.ellipse(0, 0, 15, 20, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-                }
-                ctx.restore();
-            });
-        }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+const GRID = 20, PX_TO_M = 0.05;
 
-        // --- インタラクション ---
-        canvas.addEventListener('mousedown', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const floor = project.data[project.currentFloor];
+const ROOM_COLORS = {
+  LDK:'#C8A870', 寝室:'#8AB0C8', キッチン:'#C89AB0', 浴室:'#7ABDB5',
+  トイレ:'#8AAB70', 玄関:'#B09870', 収納:'#9870B8', 庭:'#70A870',
+};
+const ROOM_WALL_COLORS = {
+  LDK:0xF5E8D0, 寝室:0xD0E0F0, キッチン:0xF0D0E0, 浴室:0xD0F0EC,
+  トイレ:0xDCF0D0, 玄関:0xF0E4D8, 収納:0xE4D0F0, 庭:0x5A9E5A,
+};
+const ROOM_FLOOR_COLORS = {
+  LDK:0xB8924A, 寝室:0x5A90B8, キッチン:0xB85A90, 浴室:0x4AADA5,
+  トイレ:0x70A850, 玄関:0x98784A, 収納:0x7850A8, 庭:0x3A8A3A,
+};
 
-            // リサイズ判定
-            floor.rooms.forEach((r, idx) => {
-                if(Math.abs(mx - (r.x + r.w)) < 15 && Math.abs(my - (r.y + r.h)) < 15) {
-                    appState.resizingObj = { idx };
-                } else if(mx > r.x && mx < r.x + r.w && my > r.y && my < r.y + r.h) {
-                    appState.draggingObj = { type: 'room', idx, offset: {x: mx-r.x, y: my-r.y} };
-                }
-            });
-        });
+const STYLES = [
+  {id:'japanese',    label:'和風',       emoji:'⛩️',  desc:'畳・障子・縁側'},
+  {id:'american',    label:'アメリカン', emoji:'🏠',  desc:'木材・広いポーチ'},
+  {id:'scandinavian',label:'北欧',       emoji:'🌲',  desc:'白木・シンプル'},
+  {id:'modern',      label:'モダン',     emoji:'🏢',  desc:'コンクリート・鉄'},
+  {id:'mediterranean',label:'地中海',    emoji:'🌊',  desc:'白壁・テラコッタ'},
+  {id:'natural',     label:'ナチュラル', emoji:'🌸',  desc:'植物・明るい空間'},
+];
 
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const floor = project.data[project.currentFloor];
+let state = {
+  floors: 1,
+  currentFloor: 1,
+  floorData: {},   // { 1: { rooms:[], walls:[], doors:[], windows:[] } }
+  history: [],
+  histPos: -1,
+  selected: null,
+  dragging: null,
+  resizing: null,
+  drawTool: 'select',
+  drawing: null,
+  draggingEl: null,
+  selectedEl: null,
+  mode: 'floor',
+  selectedStyle: 'japanese',
+  favorites: [],
+  showRoof: false,
+};
 
-            if(appState.resizingObj) {
-                const r = floor.rooms[appState.resizingObj.idx];
-                r.w = snap(mx - r.x);
-                r.h = snap(my - r.y);
-                render();
-            } else if(appState.draggingObj) {
-                const r = floor.rooms[appState.draggingObj.idx];
-                r.x = snap(mx - appState.draggingObj.offset.x);
-                r.y = snap(my - appState.draggingObj.offset.y);
-                render();
-            }
-        });
+let canvas3d = null, renderer3d = null, scene3d = null, camera3d = null, anim3d = null;
+const orbit = { theta:0.7, phi:0.85, radius:26, dragging:false, lx:0, ly:0 };
 
-        window.addEventListener('mouseup', () => {
-            if(appState.draggingObj || appState.resizingObj) saveHistory();
-            appState.draggingObj = null;
-            appState.resizingObj = null;
-        });
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+function initApp(n) {
+  state.floors = n;
+  for (let i = 1; i <= n; i++) {
+    state.floorData[i] = { rooms:[], walls:[], doors:[], windows:[] };
+    const btn = document.createElement('button');
+    btn.className = 'ftab' + (i===1?' active':'');
+    btn.textContent = i+'F';
+    btn.onclick = () => switchFloor(i);
+    btn.id = 'ftab-'+i;
+    document.getElementById('floor-tabs').appendChild(btn);
+  }
+  document.getElementById('setup').style.display = 'none';
+  resizeCanvas();
+  saveHistory();
+  render();
+  buildStyleGrid();
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('keydown', onKey);
+}
 
-        // --- Undo機能 ---
-        function saveHistory() {
-            project.history.push(JSON.stringify(project.data));
-            if(project.history.length > 20) project.history.shift();
-        }
+function switchFloor(n) {
+  state.currentFloor = n;
+  state.selected = null;
+  document.querySelectorAll('.ftab').forEach((b,i)=>{
+    b.classList.toggle('active', i+1===n);
+  });
+  render();
+  updateStats();
+  updateSbSummary();
+}
 
-        function undo() {
-            if(project.history.length > 1) {
-                project.history.pop();
-                project.data = JSON.parse(project.history[project.history.length - 1]);
-                render();
-            }
-        }
+// ══════════════════════════════════════════════════════
+// CANVAS SETUP
+// ══════════════════════════════════════════════════════
+const cv = document.getElementById('main-canvas');
+const ctx = cv.getContext('2d');
 
-        // --- ドラッグ＆ドロップ（設備） ---
-        function allowDrop(e) { e.preventDefault(); }
-        function drag(e, type) { e.dataTransfer.setData("type", type); }
-        function drop(e) {
-            e.preventDefault();
-            const type = e.dataTransfer.getData("type");
-            const rect = canvas.getBoundingClientRect();
-            project.data[project.currentFloor].items.push({
-                x: snap(e.clientX - rect.left),
-                y: snap(e.clientY - rect.top),
-                type: type
-            });
-            saveHistory();
-            render();
-        }
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-inner');
+  cv.width  = wrap.clientWidth  || 900;
+  cv.height = wrap.clientHeight || 680;
+  render();
+}
 
-        function setTool(tool) {
-            appState.currentTool = tool;
-            document.querySelectorAll('aside button').forEach(b => b.classList.remove('active-floor'));
-            document.getElementById(`tool-${tool}`).classList.add('active-floor');
-        }
-    </script>
+// ══════════════════════════════════════════════════════
+// RENDER 2D
+// ══════════════════════════════════════════════════════
+function snapVal(v) { return Math.round(v/GRID)*GRID; }
+
+function render() {
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const data = curData();
+
+  // Ghost floors
+  for (let f = state.currentFloor-1; f >= 1; f--) {
+    const alpha = 0.08 * (1 / (state.currentFloor - f));
+    ctx.globalAlpha = alpha;
+    state.floorData[f].rooms.forEach(r => {
+      ctx.fillStyle = '#8080A0';
+      ctx.fillRect(r.x,r.y,r.w,r.h);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // Rooms
+  data.rooms.forEach((r, i) => {
+    const isSel = state.selected === i;
+    // Floor fill
+    ctx.fillStyle = ROOM_COLORS[r.name] || '#3A3028';
+    ctx.globalAlpha = 0.18;
+    ctx.fillRect(r.x,r.y,r.w,r.h);
+    ctx.globalAlpha = 1;
+
+    // Outer wall
+    ctx.strokeStyle = isSel ? '#C4A35A' : '#8A8070';
+    ctx.lineWidth = isSel ? 3 : 2;
+    ctx.strokeRect(r.x,r.y,r.w,r.h);
+
+    // Inner wall line
+    ctx.strokeStyle = 'rgba(200,180,140,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(r.x+8,r.y+8,r.w-16,r.h-16);
+
+    // Label
+    ctx.fillStyle = isSel ? '#C4A35A' : '#E8D5B7';
+    ctx.font = `bold ${Math.min(14, r.w/8)}px 'Zen Kaku Gothic New'`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const m2 = (r.w*r.h*PX_TO_M*PX_TO_M).toFixed(1);
+    ctx.fillText(`${r.name}`, r.x+r.w/2, r.y+r.h/2-8);
+    ctx.fillStyle = 'rgba(200,180,140,0.5)';
+    ctx.font = `700 10px 'JetBrains Mono'`;
+    ctx.fillText(`${r.w/GRID}×${r.h/GRID}m  ${m2}㎡`, r.x+r.w/2, r.y+r.h/2+10);
+
+    // Selection handles
+    if (isSel) {
+      // resize handle
+      ctx.fillStyle = '#C4A35A';
+      ctx.fillRect(r.x+r.w-8, r.y+r.h-8, 16, 16);
+      // selection glow outline
+      ctx.strokeStyle = 'rgba(196,163,90,0.35)';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(r.x-3,r.y-3,r.w+6,r.h+6);
+    }
+  });
+
+  // Structural elements
+  drawWalls(data.walls);
+  drawDoors(data.doors);
+  drawWindows(data.windows);
+
+  // Live drawing wall
+  if (state.drawing) {
+    ctx.strokeStyle = '#C4A35A';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8,4]);
+    ctx.beginPath(); ctx.moveTo(state.drawing.x1,state.drawing.y1); ctx.lineTo(state.drawing.x2,state.drawing.y2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#C4A35A';
+    ctx.beginPath(); ctx.arc(state.drawing.x1,state.drawing.y1,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(state.drawing.x2,state.drawing.y2,5,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function drawWalls(walls) {
+  walls.forEach((w, i) => {
+    const isSel = state.selectedEl && state.selectedEl.kind==='wall' && state.selectedEl.id===w.id;
+    const dx=w.x2-w.x1, dy=w.y2-w.y1, len=Math.sqrt(dx*dx+dy*dy)||1;
+    const nx=-dy/len*6, ny=dx/len*6;
+    ctx.strokeStyle = isSel ? '#C4A35A' : '#B8B0A0';
+    ctx.lineWidth = isSel ? 3 : 2;
+    ctx.beginPath(); ctx.moveTo(w.x1+nx,w.y1+ny); ctx.lineTo(w.x2+nx,w.y2+ny); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w.x1-nx,w.y1-ny); ctx.lineTo(w.x2-nx,w.y2-ny); ctx.stroke();
+  });
+}
+
+function drawDoors(doors) {
+  doors.forEach(d => {
+    const isSel = state.selectedEl && state.selectedEl.kind==='door' && state.selectedEl.id===d.id;
+    const sz=d.size||60, ang=(d.angle||0)*Math.PI/180;
+    const lx=d.x+sz*Math.cos(ang), ly=d.y+sz*Math.sin(ang);
+    const ax=d.x+sz*Math.cos(ang+Math.PI/2), ay=d.y+sz*Math.sin(ang+Math.PI/2);
+    ctx.strokeStyle = isSel ? '#C4A35A' : '#B8904A';
+    ctx.lineWidth = isSel ? 3 : 2;
+    ctx.fillStyle = isSel ? '#C4A35A' : '#8A6830';
+    ctx.fillRect(d.x-5,d.y-5,10,10);
+    ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(lx,ly); ctx.stroke();
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(lx,ly); ctx.arc(d.x,d.y,sz,ang,ang+Math.PI/2); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+}
+
+function drawWindows(wins) {
+  wins.forEach(w => {
+    const isSel = state.selectedEl && state.selectedEl.kind==='window' && state.selectedEl.id===w.id;
+    const sz=w.size||80, ang=(w.angle||0)*Math.PI/180;
+    const cos=Math.cos(ang), sin=Math.sin(ang);
+    const nx=-sin*7, ny=cos*7;
+    const x2=w.x+sz*cos, y2=w.y+sz*sin;
+    ctx.strokeStyle = isSel ? '#C4A35A' : '#4A9EFF';
+    ctx.lineWidth = isSel ? 3 : 2;
+    ctx.beginPath(); ctx.moveTo(w.x+nx,w.y+ny); ctx.lineTo(x2+nx,y2+ny); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w.x-nx,w.y-ny); ctx.lineTo(x2-nx,y2-ny); ctx.stroke();
+    ctx.strokeStyle = isSel ? 'rgba(196,163,90,0.4)' : 'rgba(74,158,255,0.4)';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(w.x,w.y); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.strokeStyle = isSel ? '#C4A35A' : '#8090A0';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(w.x+nx,w.y+ny); ctx.lineTo(w.x-nx,w.y-ny); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2+nx,y2+ny); ctx.lineTo(x2-nx,y2-ny); ctx.stroke();
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// CANVAS INTERACTION
+// ══════════════════════════════════════════════════════
+function svgPt(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: snapVal(e.clientX-r.left), y: snapVal(e.clientY-r.top) };
+}
+
+cv.addEventListener('mousedown', e => {
+  const {x,y} = svgPt(e);
+  const data = curData();
+  if (state.mode === 'floor') {
+    state.selected = null;
+    // Check resize handles first
+    for (let i = data.rooms.length-1; i >= 0; i--) {
+      const r = data.rooms[i];
+      if (Math.abs(x-(r.x+r.w))<12 && Math.abs(y-(r.y+r.h))<12) {
+        state.selected = i;
+        state.resizing = { i, startX:e.clientX, startY:e.clientY, origW:r.w, origH:r.h };
+        render(); return;
+      }
+      if (x>r.x && x<r.x+r.w && y>r.y && y<r.y+r.h) {
+        state.selected = i;
+        state.dragging = { i, ox:e.clientX-r.x, oy:e.clientY-r.y };
+        showPropPanel(r);
+        render(); return;
+      }
+    }
+    state.selected = null;
+    render();
+  } else if (state.mode === 'struct') {
+    const tool = state.drawTool;
+    if (tool==='wall') {
+      state.drawing = {x1:x,y1:y,x2:x,y2:y};
+    } else if (tool==='door') {
+      data.doors.push({id:Date.now(),x,y,size:60,angle:0});
+      saveHistory(); render();
+    } else if (tool==='window') {
+      data.windows.push({id:Date.now(),x,y,size:80,angle:0});
+      saveHistory(); render();
+    } else if (tool==='select') {
+      state.selectedEl = null;
+      // Check walls
+      for (const w of data.walls) {
+        const d=distToSeg(x,y,w.x1,w.y1,w.x2,w.y2);
+        if(d<10){ state.selectedEl={kind:'wall',id:w.id}; showElProp(); render(); return; }
+      }
+      for (const d of data.doors) {
+        if(Math.abs(x-d.x)<14&&Math.abs(y-d.y)<14){ state.selectedEl={kind:'door',id:d.id}; state.draggingEl={kind:'door',id:d.id,startX:x,startY:y,ox:d.x,oy:d.y}; showElProp(); render(); return; }
+      }
+      for (const w of data.windows) {
+        if(Math.abs(x-w.x)<14&&Math.abs(y-w.y)<14){ state.selectedEl={kind:'window',id:w.id}; state.draggingEl={kind:'window',id:w.id,startX:x,startY:y,ox:w.x,oy:w.y}; showElProp(); render(); return; }
+      }
+      state.selectedEl=null; showElProp(); render();
+    } else if (tool==='erase') {
+      // walls
+      for (let i=data.walls.length-1;i>=0;i--) {
+        if(distToSeg(x,y,data.walls[i].x1,data.walls[i].y1,data.walls[i].x2,data.walls[i].y2)<10){ data.walls.splice(i,1); saveHistory(); render(); return; }
+      }
+      for (let i=data.doors.length-1;i>=0;i--) {
+        const d=data.doors[i];
+        if(Math.abs(x-d.x)<14&&Math.abs(y-d.y)<14){ data.doors.splice(i,1); saveHistory(); render(); return; }
+      }
+      for (let i=data.windows.length-1;i>=0;i--) {
+        const w=data.windows[i];
+        if(Math.abs(x-w.x)<14&&Math.abs(y-w.y)<14){ data.windows.splice(i,1); saveHistory(); render(); return; }
+      }
+    }
+  }
+});
+
+cv.addEventListener('mousemove', e => {
+  const {x,y} = svgPt(e);
+  const data = curData();
+  if (state.dragging) {
+    const r = data.rooms[state.dragging.i];
+    r.x = snapVal(e.clientX - state.dragging.ox);
+    r.y = snapVal(e.clientY - state.dragging.oy);
+    render();
+  } else if (state.resizing) {
+    const r = data.rooms[state.resizing.i];
+    r.w = Math.max(80, snapVal(state.resizing.origW + e.clientX - state.resizing.startX));
+    r.h = Math.max(60, snapVal(state.resizing.origH + e.clientY - state.resizing.startY));
+    updateStats();
+    render();
+  } else if (state.drawing) {
+    const dx=Math.abs(x-state.drawing.x1), dy=Math.abs(y-state.drawing.y1);
+    state.drawing.x2 = (dy<15&&dx>dy)?x:(dx<15&&dy>dx)?state.drawing.x1:x;
+    state.drawing.y2 = (dx<15&&dy>dx)?y:(dy<15&&dx>dy)?state.drawing.y1:y;
+    render();
+  } else if (state.draggingEl) {
+    const de = state.draggingEl, dx=x-de.startX, dy=y-de.startY;
+    if(de.kind==='door') { const d=data.doors.find(d=>d.id===de.id); if(d){d.x=de.ox+dx;d.y=de.oy+dy;} }
+    if(de.kind==='window') { const w=data.windows.find(w=>w.id===de.id); if(w){w.x=de.ox+dx;w.y=de.oy+dy;} }
+    render();
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if(state.dragging||state.resizing) saveHistory();
+  if(state.drawing) {
+    const {x1,y1,x2,y2}=state.drawing;
+    const len=Math.sqrt((x2-x1)**2+(y2-y1)**2);
+    if(len>20) { curData().walls.push({id:Date.now(),x1,y1,x2,y2}); saveHistory(); }
+    state.drawing = null;
+  }
+  if(state.draggingEl) saveHistory();
+  state.dragging = null; state.resizing = null; state.draggingEl = null;
+  render(); updateStats();
+});
+
+function distToSeg(px,py,ax,ay,bx,by) {
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+  if(l2===0) return Math.hypot(px-ax,py-ay);
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/l2));
+  return Math.hypot(px-ax-t*dx,py-ay-t*dy);
+}
+
+// ══════════════════════════════════════════════════════
+// ROOMS
+// ══════════════════════════════════════════════════════
+let nextRoomId = 1;
+function addRoom(name, w, h, bg) {
+  const data = curData();
+  data.rooms.push({ id:nextRoomId++, name, x:60, y:60, w, h });
+  saveHistory(); render(); updateStats();
+  notify(`${name} を追加しました`);
+}
+
+function curData() { return state.floorData[state.currentFloor]; }
+
+// ══════════════════════════════════════════════════════
+// MODE SWITCHING
+// ══════════════════════════════════════════════════════
+function setMode(m) {
+  state.mode = m;
+  ['floor','struct','3d','perse','fav'].forEach(id => {
+    document.getElementById('mtab-'+id)?.classList.toggle('active', id===m);
+  });
+  document.getElementById('sb-floor').style.display = m==='floor'?'':'none';
+  document.getElementById('sb-struct').style.display = m==='struct'?'':'none';
+  document.getElementById('sb-other').style.display = (m==='3d'||m==='perse'||m==='fav')?'':'none';
+  document.getElementById('canvas-hint').style.display = (m==='floor'||m==='struct')?'':'none';
+
+  // Canvas vs panels
+  document.getElementById('canvas-inner').style.display = (m==='floor'||m==='struct')?'':'none';
+  document.getElementById('ruler-h').style.display = (m==='floor'||m==='struct')?'':'none';
+  document.getElementById('ruler-v').style.display = (m==='floor'||m==='struct')?'':'none';
+  document.getElementById('preview-3d').classList.toggle('visible', m==='3d');
+  document.getElementById('perse-panel').classList.toggle('visible', m==='perse');
+  document.getElementById('fav-panel').classList.toggle('visible', m==='fav');
+
+  if(m==='3d') init3d();
+  if(m==='perse'||m==='fav'||m==='3d') updateSbSummary();
+  if(m==='fav') renderFavGrid();
+  if(m==='struct') {
+    document.getElementById('canvas-hint').textContent = '壁: ドラッグ  ドア/窓: クリック配置  選択: 移動・プロパティ';
+    document.getElementById('canvas-hint').style.display = '';
+  }
+}
+
+function setTool(t) {
+  state.drawTool = t;
+  state.selectedEl = null;
+  showElProp();
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tb-'+t)?.classList.add('active');
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+// PROPERTY PANELS
+// ══════════════════════════════════════════════════════
+function showPropPanel(r) {
+  const p = document.getElementById('prop-panel');
+  p.classList.add('visible');
+  document.getElementById('prop-content').innerHTML = `
+    <div class="prop-row"><span class="prop-label">名前</span><input class="prop-input" value="${r.name}" onchange="renameRoom(this.value)"/></div>
+    <div class="prop-row"><span class="prop-label">幅</span><span class="prop-val">${r.w/GRID} m</span></div>
+    <div class="prop-row"><span class="prop-label">奥行</span><span class="prop-val">${r.h/GRID} m</span></div>
+    <div class="prop-row"><span class="prop-label">面積</span><span class="prop-val">${(r.w*r.h*PX_TO_M*PX_TO_M).toFixed(2)} ㎡</span></div>
+    <button style="width:100%;margin-top:8px;padding:6px;background:#8B2020;border:none;border-radius:6px;color:#fff;font-size:10px;cursor:pointer;font-family:'Zen Kaku Gothic New'" onclick="deleteSelected()">🗑 削除</button>`;
+}
+function renameRoom(v) {
+  if(state.selected!==null) { curData().rooms[state.selected].name=v; render(); }
+}
+function deleteSelected() {
+  if(state.selected!==null) { curData().rooms.splice(state.selected,1); state.selected=null; document.getElementById('prop-panel').classList.remove('visible'); saveHistory(); render(); updateStats(); }
+}
+
+function showElProp() {
+  const p = document.getElementById('prop-panel');
+  const sel = state.selectedEl;
+  if (!sel) { p.classList.remove('visible'); return; }
+  const data = curData();
+  const el = sel.kind==='wall'?data.walls.find(w=>w.id===sel.id):sel.kind==='door'?data.doors.find(d=>d.id===sel.id):data.windows.find(w=>w.id===sel.id);
+  if (!el) { p.classList.remove('visible'); return; }
+  p.classList.add('visible');
+  const icon = sel.kind==='wall'?'🧱':sel.kind==='door'?'🚪':'🪟';
+  const label = sel.kind==='wall'?'壁':sel.kind==='door'?'ドア':'窓';
+  let sizeRow='', angleRow='';
+  if (sel.kind!=='wall') {
+    sizeRow=`<div class="prop-row"><span class="prop-label">サイズ</span><span class="prop-val">${el.size||60}px</span></div>
+      <input type="range" class="prop-slider" min="30" max="120" value="${el.size||60}" oninput="updateEl('size',+this.value)">`;
+    angleRow=`<div class="prop-row" style="margin-top:8px"><span class="prop-label">回転</span><span class="prop-val">${el.angle||0}°</span></div>
+      <input type="range" class="prop-slider" min="0" max="359" value="${el.angle||0}" oninput="updateEl('angle',+this.value)">`;
+  }
+  document.getElementById('prop-content').innerHTML = `
+    <div class="prop-row"><span class="prop-label">${icon} ${label}</span></div>
+    ${sizeRow}${angleRow}
+    <button style="width:100%;margin-top:10px;padding:6px;background:#8B2020;border:none;border-radius:6px;color:#fff;font-size:10px;cursor:pointer;font-family:'Zen Kaku Gothic New'" onclick="deleteEl()">🗑 削除</button>`;
+}
+
+function updateEl(key, val) {
+  const sel = state.selectedEl, data = curData();
+  if(!sel) return;
+  if(sel.kind==='door') { const d=data.doors.find(d=>d.id===sel.id); if(d) d[key]=val; }
+  if(sel.kind==='window') { const w=data.windows.find(w=>w.id===sel.id); if(w) w[key]=val; }
+  showElProp(); render();
+}
+function deleteEl() {
+  const sel=state.selectedEl, data=curData();
+  if(!sel) return;
+  if(sel.kind==='wall')   data.walls   = data.walls.filter(w=>w.id!==sel.id);
+  if(sel.kind==='door')   data.doors   = data.doors.filter(d=>d.id!==sel.id);
+  if(sel.kind==='window') data.windows = data.windows.filter(w=>w.id!==sel.id);
+  state.selectedEl=null; showElProp(); saveHistory(); render();
+}
+
+// ══════════════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════════════
+function updateStats() {
+  let totalPx = 0;
+  Object.values(state.floorData).forEach(f => f.rooms.forEach(r => totalPx+=r.w*r.h));
+  const m2 = totalPx*PX_TO_M*PX_TO_M;
+  const tatami = m2/1.62;
+  document.getElementById('stat-area').textContent = m2.toFixed(2);
+  document.getElementById('stat-tatami').textContent = tatami.toFixed(1)+' 畳';
+  let adv = '';
+  if(m2===0) adv='設計を開始してください。';
+  else if(m2<25) adv='コンパクトな単身向け。収納の工夫が必要です。';
+  else if(m2<50) adv='カップル向けの広さ。動線を意識しましょう。';
+  else if(m2<80) adv='ファミリー向けの標準的な広さです。';
+  else adv='ゆとりのある広さです。プライベートゾーンを充実させましょう。';
+  document.getElementById('advice-text').textContent = adv;
+  // fav count
+  const fc = state.favorites.length;
+  document.getElementById('fav-count').textContent = fc>0?`(${fc})`:'';
+}
+
+function updateSbSummary() {
+  const all = Object.values(state.floorData);
+  const totalRooms = all.reduce((s,f)=>s+f.rooms.length,0);
+  const totalWalls = all.reduce((s,f)=>s+f.walls.length,0);
+  const curF = curData();
+  document.getElementById('sb-summary').innerHTML =
+    `部屋数: <b style="color:var(--gold)">${totalRooms}</b><br>` +
+    `壁: <b style="color:var(--gold)">${totalWalls}</b>  ドア: <b style="color:var(--gold)">${curF.doors.length}</b>  窓: <b style="color:var(--gold)">${curF.windows.length}</b><br>` +
+    `現在: <b style="color:var(--gold)">${state.currentFloor}F</b> / ${state.floors}F建`;
+  // 3d overlay stats
+  document.getElementById('pi-rooms').textContent = totalRooms;
+  document.getElementById('pi-walls').textContent = totalWalls;
+  document.getElementById('pi-doors').textContent = curF.doors.length;
+  document.getElementById('pi-wins').textContent  = curF.windows.length;
+  const m2=(Object.values(state.floorData).flatMap(f=>f.rooms).reduce((s,r)=>s+r.w*r.h,0)*PX_TO_M*PX_TO_M).toFixed(1);
+  document.getElementById('pi-area').textContent  = m2;
+}
+
+// ══════════════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════════════
+function saveHistory() {
+  const snap = JSON.stringify(state.floorData);
+  state.history = state.history.slice(0, state.histPos+1);
+  state.history.push(snap);
+  state.histPos = state.history.length-1;
+  if(state.history.length>60) { state.history.shift(); state.histPos--; }
+}
+function undo() {
+  if(state.histPos>0) { state.histPos--; state.floorData=JSON.parse(state.history[state.histPos]); render(); updateStats(); notify('元に戻しました'); }
+}
+function redo() {
+  if(state.histPos<state.history.length-1) { state.histPos++; state.floorData=JSON.parse(state.history[state.histPos]); render(); updateStats(); notify('やり直しました'); }
+}
+function clearFloor() {
+  if(!confirm(`${state.currentFloor}Fをクリアしますか？`)) return;
+  state.floorData[state.currentFloor]={rooms:[],walls:[],doors:[],windows:[]};
+  state.selected=null; saveHistory(); render(); updateStats(); notify(`${state.currentFloor}Fをクリアしました`);
+}
+function saveProject() {
+  try { localStorage.setItem('madori_ultra_v1', JSON.stringify({floorData:state.floorData,favorites:state.favorites})); notify('プロジェクトを保存しました 💾'); } catch(e) { notify('保存に失敗しました'); }
+}
+function onKey(e) {
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){ e.preventDefault(); undo(); }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.shiftKey&&e.key==='z'))){ e.preventDefault(); redo(); }
+  if(e.key==='Delete'&&state.mode==='floor') deleteSelected();
+  if(e.key==='Delete'&&state.mode==='struct') deleteEl();
+}
+
+// ══════════════════════════════════════════════════════
+// 3D
+// ══════════════════════════════════════════════════════
+const toX3 = px => (px-300)*PX_TO_M;
+const toZ3 = py => (py-240)*PX_TO_M;
+const WALL_H = 4.5;
+
+function init3d() {
+  const wrap = document.getElementById('preview-3d');
+  if (renderer3d) { rebuild3d(); return; }
+
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0x0D0D14);
+  scene3d.fog = new THREE.FogExp2(0x0D0D14, 0.025);
+
+  camera3d = new THREE.PerspectiveCamera(52, W/H, 0.1, 200);
+  renderer3d = new THREE.WebGLRenderer({antialias:true});
+  renderer3d.setSize(W,H);
+  renderer3d.shadowMap.enabled = true;
+  renderer3d.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer3d.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  wrap.appendChild(renderer3d.domElement);
+
+  const ambient = new THREE.AmbientLight(0x2030FF, 0.3);
+  scene3d.add(ambient);
+  const sun = new THREE.DirectionalLight(0xFFF5E0, 1.6);
+  sun.position.set(12,22,8); sun.castShadow=true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.near=0.1; sun.shadow.camera.far=100;
+  ['left','right','top','bottom'].forEach(k=>sun.shadow.camera[k]=(k==='left'||k==='bottom')?-30:30);
+  scene3d.add(sun);
+  scene3d.add(new THREE.DirectionalLight(0x4080FF, 0.3).position.set(-8,4,-12) && (() => { const l=new THREE.DirectionalLight(0x4080FF,0.3); l.position.set(-8,4,-12); return l; })());
+
+  rebuild3d();
+
+  const animate = () => {
+    anim3d = requestAnimationFrame(animate);
+    renderer3d.render(scene3d,camera3d);
+  };
+  animate();
+  setCam3d();
+
+  // Orbit
+  wrap.addEventListener('mousedown', e=>{orbit.dragging=true;orbit.lx=e.clientX;orbit.ly=e.clientY;});
+  window.addEventListener('mousemove', e=>{
+    if(!orbit.dragging) return;
+    orbit.theta -= (e.clientX-orbit.lx)*0.012;
+    orbit.phi = Math.max(0.12,Math.min(Math.PI/2-0.04,orbit.phi+(e.clientY-orbit.ly)*0.012));
+    orbit.lx=e.clientX; orbit.ly=e.clientY;
+    setCam3d();
+  });
+  window.addEventListener('mouseup',()=>orbit.dragging=false);
+  wrap.addEventListener('wheel',e=>{orbit.radius=Math.max(4,Math.min(60,orbit.radius+e.deltaY*0.04));setCam3d();},{passive:true});
+  window.addEventListener('resize',()=>{
+    const w2=wrap.clientWidth,h2=wrap.clientHeight;
+    renderer3d.setSize(w2,h2); camera3d.aspect=w2/h2; camera3d.updateProjectionMatrix();
+  });
+}
+
+function rebuild3d() {
+  if(!scene3d) return;
+  // Clear meshes (keep lights and fog)
+  const toRemove=[];
+  scene3d.traverse(o=>{ if(o.isMesh||o.isSprite||o.isGroup) toRemove.push(o); });
+  toRemove.forEach(o=>scene3d.remove(o));
+
+  // Ground
+  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshLambertMaterial({color:0x111118}));
+  gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=true; scene3d.add(gnd);
+  const grid=new THREE.GridHelper(80,80,0xC4A35A22,0xC4A35A11); grid.position.y=0.01; scene3d.add(grid);
+
+  const allRooms = Object.entries(state.floorData).flatMap(([fl,data])=>data.rooms.map(r=>({...r,floor:+fl})));
+  const allWalls = Object.values(state.floorData).flatMap(f=>f.walls);
+  const allDoors = Object.values(state.floorData).flatMap(f=>f.doors);
+  const allWins  = Object.values(state.floorData).flatMap(f=>f.windows);
+
+  allRooms.forEach(r => {
+    const flOff = (r.floor-1)*WALL_H;
+    const rw=r.w*PX_TO_M, rh=r.h*PX_TO_M;
+    const cx=toX3(r.x+r.w/2), cz=toZ3(r.y+r.h/2);
+    const fc=ROOM_FLOOR_COLORS[r.name]||0x886644;
+    const wc=ROOM_WALL_COLORS[r.name]||0xDDD0C0;
+
+    // Floor
+    const fl=new THREE.Mesh(new THREE.BoxGeometry(rw-0.05,0.12,rh-0.05),new THREE.MeshLambertMaterial({color:fc}));
+    fl.position.set(cx,flOff+0.06,cz); fl.receiveShadow=true; scene3d.add(fl);
+
+    // Walls
+    const wmat=new THREE.MeshLambertMaterial({color:wc,side:THREE.DoubleSide});
+    const wt=0.16;
+    [[rw,wt,cx,flOff+WALL_H/2,cz-rh/2],[rw,wt,cx,flOff+WALL_H/2,cz+rh/2],
+     [wt,rh,cx-rw/2,flOff+WALL_H/2,cz],[wt,rh,cx+rw/2,flOff+WALL_H/2,cz]].forEach(([w,d,x,y,z])=>{
+      const m=new THREE.Mesh(new THREE.BoxGeometry(w,WALL_H,d),wmat.clone());
+      m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene3d.add(m);
+    });
+
+    // Label sprite
+    const lc=document.createElement('canvas'); lc.width=256; lc.height=64;
+    const lx=lc.getContext('2d');
+    lx.font='bold 26px sans-serif'; lx.fillStyle='#C4A35A'; lx.textAlign='center';
+    lx.fillText(r.name,128,44);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true}));
+    sp.position.set(cx,flOff+WALL_H+0.8,cz); sp.scale.set(4,1,1); scene3d.add(sp);
+  });
+
+  // Custom walls
+  allWalls.forEach(w=>{
+    const dx=(w.x2-w.x1)*PX_TO_M, dz=(w.y2-w.y1)*PX_TO_M, len=Math.sqrt(dx*dx+dz*dz);
+    if(len<0.1) return;
+    const cx=(toX3(w.x1)+toX3(w.x2))/2, cz=(toZ3(w.y1)+toZ3(w.y2))/2;
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(len,WALL_H,0.2),new THREE.MeshLambertMaterial({color:0x8A7860}));
+    mesh.position.set(cx,WALL_H/2,cz); mesh.rotation.y=-Math.atan2(dz,dx); mesh.castShadow=true; scene3d.add(mesh);
+  });
+
+  // Doors
+  allDoors.forEach(d=>{
+    const g=new THREE.Group(), fmat=new THREE.MeshLambertMaterial({color:0x6B3A2A});
+    [[-0.55,0],[0.55,0]].forEach(([ox])=>{
+      const p=new THREE.Mesh(new THREE.BoxGeometry(0.1,WALL_H*0.82,0.1),fmat);
+      p.position.set(toX3(d.x)+ox,WALL_H*0.41,toZ3(d.y)); g.add(p);
+    });
+    const top=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.1,0.1),fmat);
+    top.position.set(toX3(d.x),WALL_H*0.82,toZ3(d.y)); g.add(top);
+    const leaf=new THREE.Mesh(new THREE.BoxGeometry(1.0,WALL_H*0.8,0.06),new THREE.MeshLambertMaterial({color:0xA0602A}));
+    leaf.position.set(toX3(d.x),WALL_H*0.4,toZ3(d.y)); g.add(leaf);
+    scene3d.add(g);
+  });
+
+  // Windows
+  allWins.forEach(w=>{
+    const g=new THREE.Group();
+    const fmat=new THREE.MeshLambertMaterial({color:0x666666});
+    const gmat=new THREE.MeshLambertMaterial({color:0x4A9EFF,transparent:true,opacity:0.45});
+    const f=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.1,0.08),fmat);
+    f.position.set(toX3(w.x),WALL_H*0.6,toZ3(w.y)); g.add(f);
+    const gl=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.9,0.04),gmat);
+    gl.position.set(toX3(w.x),WALL_H*0.6,toZ3(w.y)); g.add(gl);
+    scene3d.add(g);
+  });
+
+  // Roof
+  if(state.showRoof && allRooms.length>0) {
+    const xs=allRooms.flatMap(r=>[toX3(r.x),toX3(r.x+r.w)]);
+    const zs=allRooms.flatMap(r=>[toZ3(r.y),toZ3(r.y+r.h)]);
+    const mnX=Math.min(...xs),mxX=Math.max(...xs),mnZ=Math.min(...zs),mxZ=Math.max(...zs);
+    const rW=mxX-mnX+0.6, rD=mxZ-mnZ+0.6, rcx=(mnX+mxX)/2, rcz=(mnZ+mxZ)/2;
+    const topFloor=state.floors;
+    const flOff=(topFloor-1)*WALL_H;
+    const rbase=new THREE.Mesh(new THREE.BoxGeometry(rW+0.6,0.15,rD+0.6),new THREE.MeshLambertMaterial({color:0x8B5020}));
+    rbase.position.set(rcx,flOff+WALL_H+0.07,rcz); scene3d.add(rbase);
+    const rH=Math.min(rW,rD)*0.38;
+    const s=new THREE.Shape();
+    s.moveTo(-rW/2-0.35,0); s.lineTo(0,rH); s.lineTo(rW/2+0.35,0); s.closePath();
+    const roofGeo=new THREE.ExtrudeGeometry(s,{depth:rD+1.2,bevelEnabled:false});
+    const roofM=new THREE.Mesh(roofGeo,new THREE.MeshLambertMaterial({color:0x7A3810}));
+    roofM.rotation.x=Math.PI/2; roofM.position.set(rcx,flOff+WALL_H+0.15,rcz+rD/2+0.6); roofM.castShadow=true; scene3d.add(roofM);
+  }
+}
+
+function setCam3d() {
+  const {theta,phi,radius}=orbit;
+  camera3d.position.set(radius*Math.sin(phi)*Math.cos(theta),radius*Math.cos(phi),radius*Math.sin(phi)*Math.sin(theta));
+  camera3d.lookAt(0,WALL_H/2,0);
+}
+
+function setView3d(v) {
+  document.querySelectorAll('.pctrl-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  if(v==='persp'){orbit.theta=0.7;orbit.phi=0.85;orbit.radius=26;}
+  else if(v==='top'){orbit.theta=0;orbit.phi=0.12;orbit.radius=30;}
+  else if(v==='front'){orbit.theta=0;orbit.phi=Math.PI/2-0.05;orbit.radius=24;}
+  else if(v==='side'){orbit.theta=Math.PI/2;orbit.phi=Math.PI/2-0.05;orbit.radius=24;}
+  setCam3d();
+  rebuild3d();
+}
+
+function toggleRoof() {
+  state.showRoof = !state.showRoof;
+  document.getElementById('btn-roof').textContent = `屋根 ${state.showRoof?'OFF':'ON'}`;
+  document.getElementById('btn-roof').classList.toggle('active',state.showRoof);
+  rebuild3d();
+}
+
+// ══════════════════════════════════════════════════════
+// AI PERSE
+// ══════════════════════════════════════════════════════
+function buildStyleGrid() {
+  const grid = document.getElementById('style-grid');
+  grid.innerHTML = '';
+  STYLES.forEach(s=>{
+    const card=document.createElement('div');
+    card.className='style-card'+(s.id===state.selectedStyle?' active':'');
+    card.innerHTML=`<span class="emoji">${s.emoji}</span><span class="slbl">${s.label}</span><span class="sdesc">${s.desc}</span>`;
+    card.onclick=()=>{ state.selectedStyle=s.id; document.querySelectorAll('.style-card').forEach(c=>c.classList.remove('active')); card.classList.add('active'); };
+    grid.appendChild(card);
+  });
+}
+
+async function generatePerse() {
+  const btn=document.getElementById('gen-btn');
+  btn.disabled=true;
+  btn.innerHTML='<svg class="spin" style="display:inline;width:16px;height:16px;vertical-align:middle;margin-right:8px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0"/></svg>AI 生成中…';
+  const style=STYLES.find(s=>s.id===state.selectedStyle);
+  const allRooms=Object.values(state.floorData).flatMap(f=>f.rooms);
+  const allWalls=Object.values(state.floorData).flatMap(f=>f.walls);
+  const allDoors=Object.values(state.floorData).flatMap(f=>f.doors);
+  const allWins=Object.values(state.floorData).flatMap(f=>f.windows);
+  const roomSummary=allRooms.map(r=>`${r.name}(${(r.w*PX_TO_M).toFixed(0)}m×${(r.h*PX_TO_M).toFixed(0)}m)`).join('、');
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:
+        `プロの建築パースデザイナーとして、以下の情報で住宅外観パースのSVGを生成してください。\n間取り: ${roomSummary||'標準的な間取り'}\n構造: 壁${allWalls.length}本・ドア${allDoors.length}・窓${allWins.length}・${state.floors}階建\nスタイル: ${style.label}（${style.desc}）\n\n条件: viewBox="0 0 700 460"のSVGのみ出力。${style.label}スタイルの住宅正面外観、空・地面・建物・屋根・ドア・窓・植栽を含む。色彩豊かでリアルなイラスト風。SVGタグのみ返す。`
+      }]})
+    });
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'';
+    const m=text.match(/<svg[\s\S]*<\/svg>/i);
+    if(m){
+      document.getElementById('perse-result').style.display='';
+      document.getElementById('perse-svg-wrap').innerHTML=m[0];
+      document.getElementById('perse-style-label').textContent=`${style.emoji} ${style.label}スタイル`;
+      window._lastPerse={svg:m[0],style:state.selectedStyle,styleLabel:style.label,styleEmoji:style.emoji};
+      notify('パース生成完了！');
+    }
+  } catch(e){ notify('生成に失敗しました'); console.error(e); }
+  btn.disabled=false;
+  btn.innerHTML='✦ AI パース生成';
+}
+
+function savePerse() {
+  if(!window._lastPerse) return;
+  const allRooms=Object.values(state.floorData).flatMap(f=>f.rooms);
+  state.favorites.push({
+    id:Date.now(),
+    svg:window._lastPerse.svg,
+    style:window._lastPerse.styleLabel,
+    styleEmoji:window._lastPerse.styleEmoji,
+    rooms:[...allRooms],
+    date:new Date().toLocaleDateString('ja-JP'),
+    floors:state.floors,
+  });
+  updateStats();
+  notify('お気に入りに保存しました ♥');
+  try { localStorage.setItem('madori_ultra_v1',JSON.stringify({floorData:state.floorData,favorites:state.favorites})); } catch(e){}
+}
+
+// ══════════════════════════════════════════════════════
+// FAVORITES
+// ══════════════════════════════════════════════════════
+function renderFavGrid() {
+  const grid=document.getElementById('fav-grid');
+  const empty=document.getElementById('fav-empty');
+  if(state.favorites.length===0){ empty.style.display=''; grid.style.display='none'; return; }
+  empty.style.display='none'; grid.style.display='';
+  grid.innerHTML='';
+  state.favorites.slice().reverse().forEach(fav=>{
+    const card=document.createElement('div');
+    card.className='fav-card';
+    card.innerHTML=`
+      <div class="fav-header">
+        <span class="fav-style">${fav.styleEmoji} ${fav.style} — ${fav.floors}F建</span>
+        <span class="fav-date">${fav.date}</span>
+      </div>
+      <div class="fav-body">${fav.svg}</div>
+      <div style="padding:6px 12px;font-size:9px;color:var(--text3)">${(fav.rooms||[]).map(r=>r.name).join(' ・ ')}</div>
+      <div class="fav-footer">
+        <button class="share-btn" onclick="openShare(${fav.id})">📤 シェア</button>
+        <button class="share-btn" onclick="deleteFav(${fav.id})" style="flex:0.4">🗑</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function deleteFav(id) {
+  state.favorites=state.favorites.filter(f=>f.id!==id);
+  updateStats(); renderFavGrid();
+}
+
+// ══════════════════════════════════════════════════════
+// SHARE
+// ══════════════════════════════════════════════════════
+function openShare(id) {
+  const fav=state.favorites.find(f=>f.id===id);
+  if(!fav) return;
+  const modal=document.getElementById('share-modal');
+  const opts=document.getElementById('share-opts');
+  const txt=`🏠 ${fav.style}スタイルの間取りを作成！\n部屋: ${(fav.rooms||[]).map(r=>r.name).join('・')}\n#間取りアプリ #マイホーム #リフォーム`;
+  opts.innerHTML=[
+    {icon:'📋',label:'テキストをコピー',fn:`navigator.clipboard?.writeText(${JSON.stringify(txt)}).catch(()=>{});closeShare();notify('コピーしました');`},
+    {icon:'✉️',label:'メールで送る',fn:`window.location.href='mailto:?subject=間取りパースを作成しました&body='+encodeURIComponent(${JSON.stringify(txt)});closeShare();`},
+    {icon:'🐦',label:'X (Twitter) でシェア',fn:`window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(${JSON.stringify(txt)}),'_blank');closeShare();`},
+    {icon:'💚',label:'LINE でシェア',fn:`window.open('https://line.me/R/share?text='+encodeURIComponent(${JSON.stringify(txt)}),'_blank');closeShare();`},
+  ].map(o=>`<div class="modal-opt" onclick="${o.fn}"><span class="modal-opt-icon">${o.icon}</span><span class="modal-opt-label">${o.label}</span></div>`).join('');
+  modal.classList.add('visible');
+}
+function closeShare() { document.getElementById('share-modal').classList.remove('visible'); }
+document.getElementById('share-modal').addEventListener('click',e=>{ if(e.target===document.getElementById('share-modal')) closeShare(); });
+
+// ══════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════════
+function notify(msg) {
+  const wrap=document.getElementById('notif');
+  const el=document.createElement('div');
+  el.className='notif-item';
+  el.textContent=msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); },2200);
+}
+
+// ══════════════════════════════════════════════════════
+// RULERS
+// ══════════════════════════════════════════════════════
+function drawRulers() {
+  const rh=document.getElementById('ruler-h');
+  const rv=document.getElementById('ruler-v');
+  const W=cv.width, H=cv.height;
+  let hsvg=`<svg width="${W}" height="24" xmlns="http://www.w3.org/2000/svg">`;
+  for(let x=0;x<W;x+=GRID) {
+    const m=x*PX_TO_M;
+    hsvg+=`<line x1="${x}" y1="18" x2="${x}" y2="24" stroke="#3A3A45" stroke-width="1"/>`;
+    if(x%(GRID*5)===0) hsvg+=`<text x="${x+2}" y="14" font-size="9" fill="#4A4555" font-family="JetBrains Mono">${m.toFixed(0)}m</text>`;
+  }
+  hsvg+='</svg>';
+  rh.innerHTML=hsvg;
+  let vsvg=`<svg width="32" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  for(let y=0;y<H;y+=GRID) {
+    const m=y*PX_TO_M;
+    vsvg+=`<line x1="26" y1="${y}" x2="32" y2="${y}" stroke="#3A3A45" stroke-width="1"/>`;
+    if(y%(GRID*5)===0) vsvg+=`<text x="2" y="${y+9}" font-size="9" fill="#4A4555" font-family="JetBrains Mono">${m.toFixed(0)}</text>`;
+  }
+  vsvg+='</svg>';
+  rv.innerHTML=vsvg;
+}
+
+// Load saved
+try {
+  const saved=localStorage.getItem('madori_ultra_v1');
+  if(saved){ const d=JSON.parse(saved); if(d.favorites) state.favorites=d.favorites; }
+} catch(e){}
+
+// Post-resize: draw rulers
+const origResize=resizeCanvas;
+window.resizeCanvas=function(){ resizeCanvas(); drawRulers(); };
+</script>
 </body>
 </html>
