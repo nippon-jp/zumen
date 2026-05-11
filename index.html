@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Floor Planner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <style>
+        body { background-color: #f3f4f6; }
+        #canvas-container { position: relative; overflow: hidden; }
+        canvas { background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px; touch-action: none; }
+        .furniture-item { cursor: grab; transition: transform 0.2s; }
+        .furniture-item:active { cursor: grabbing; transform: scale(1.1); }
+        #three-container { display: none; background: #000; }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- ヘッダー -->
+    <header class="bg-slate-800 text-white p-4 flex justify-between items-center shadow-lg z-10">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold tracking-tight">Floor Planner Pro</h1>
+            <nav class="flex bg-slate-700 rounded-lg p-1">
+                <button onclick="switchView('2d')" id="btn-2d" class="px-4 py-1 rounded bg-blue-500 text-white text-sm">2D図面</button>
+                <button onclick="switchView('3d')" id="btn-3d" class="px-4 py-1 rounded text-slate-300 text-sm">3D内覧</button>
+            </nav>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="saveToLocal()" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded text-sm transition font-medium">保存</button>
+            <button onclick="clearAll()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm transition">リセット</button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- サイドツールバー -->
+        <aside class="w-72 bg-white border-r border-gray-200 p-6 flex flex-col gap-8 shadow-sm z-10">
+            <div>
+                <h3 class="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">家具パーツ (Drag & Drop)</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div draggable="true" ondragstart="drag(event, 'sofa')" class="furniture-item border p-3 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50">
+                        <div class="w-10 h-6 bg-slate-400 rounded-sm"></div>
+                        <span class="text-xs text-gray-600 font-medium">ソファ</span>
+                    </div>
+                    <div draggable="true" ondragstart="drag(event, 'table')" class="furniture-item border p-3 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50">
+                        <div class="w-8 h-8 bg-amber-600 rounded-full"></div>
+                        <span class="text-xs text-gray-600 font-medium">テーブル</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-auto bg-slate-900 text-white p-5 rounded-2xl shadow-inner">
+                <p class="text-[10px] text-slate-400 mb-1 uppercase font-bold">Estimated Area</p>
+                <p id="area-display" class="text-3xl font-mono font-bold text-blue-400">0.00 <span class="text-sm font-normal text-slate-500 ml-1">㎡</span></p>
+            </div>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="flex-1 relative bg-gray-200 p-8 flex justify-center items-center">
+            <!-- 2D Canvas -->
+            <div id="canvas-container" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <canvas id="floorPlanCanvas" width="800" height="600" class="shadow-2xl rounded border border-gray-300 bg-white"></canvas>
+            </div>
+            <!-- 3D Container -->
+            <div id="three-container" class="absolute inset-0 w-full h-full"></div>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('floorPlanCanvas');
+        const ctx = canvas.getContext('2d');
+        const areaDisplay = document.getElementById('area-display');
+        const threeContainer = document.getElementById('three-container');
+
+        let points = [];
+        let furniture = [];
+        let drawing = false;
+        const snapSize = 20;
+
+        // グリッドスナップ
+        const snap = (pos) => Math.round(pos / snapSize) * snapSize;
+
+        // --- 描画ロジック ---
+        canvas.addEventListener('mousedown', (e) => {
+            if(window.currentView === '3d') return;
+            drawing = true;
+            const rect = canvas.getBoundingClientRect();
+            points.push({ x: snap(e.clientX - rect.left), y: snap(e.clientY - rect.top) });
+            render2D();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            render2D(snap(e.clientX - rect.left), snap(e.clientY - rect.top));
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (drawing) {
+                drawing = false;
+                calculateArea();
+            }
+        });
+
+        function render2D(curX = null, curY = null) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 壁の描画
+            if (points.length > 0) {
+                ctx.beginPath();
+                ctx.lineWidth = 10;
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineJoin = 'round';
+                ctx.moveTo(points[0].x, points[0].y);
+                points.forEach(p => ctx.lineTo(p.x, p.y));
+                if (curX !== null) {
+                    ctx.lineTo(curX, curY);
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.stroke();
+                }
+            }
+
+            // 家具の描画
+            furniture.forEach(item => {
+                ctx.fillStyle = item.type === 'sofa' ? '#94a3b8' : '#d97706';
+                ctx.fillRect(item.x - 20, item.y - 20, 40, 40);
+                ctx.strokeStyle = '#fff';
+                ctx.strokeRect(item.x - 20, item.y - 20, 40, 40);
+            });
+        }
+
+        // --- ドラッグ＆ドロップ ---
+        function allowDrop(e) { e.preventDefault(); }
+        function drag(e, type) { e.dataTransfer.setData("type", type); }
+        function drop(e) {
+            e.preventDefault();
+            const type = e.dataTransfer.getData("type");
+            const rect = canvas.getBoundingClientRect();
+            furniture.push({
+                x: snap(e.clientX - rect.left),
+                y: snap(e.clientY - rect.top),
+                type: type
+            });
+            render2D();
+        }
+
+        // --- 面積計算 ---
+        function calculateArea() {
+            if (points.length < 3) return;
+            let area = 0;
+            for (let i = 0; i < points.length; i++) {
+                let j = (i + 1) % points.length;
+                area += points[i].x * points[j].y - points[j].x * points[i].y;
+            }
+            const realArea = Math.abs(area) / 2 / 10000;
+            areaDisplay.innerText = realArea.toFixed(2) + " ㎡";
+        }
+
+        // --- データ保存 (localStorage) ---
+        function saveToLocal() {
+            const data = { points, furniture };
+            localStorage.setItem('savedFloorPlan', JSON.stringify(data));
+            alert('ブラウザに保存しました');
+        }
+
+        function loadFromLocal() {
+            const saved = localStorage.getItem('savedFloorPlan');
+            if (saved) {
+                const data = JSON.parse(saved);
+                points = data.points || [];
+                furniture = data.furniture || [];
+                render2D();
+                calculateArea();
+            }
+        }
+
+        function clearAll() {
+            if(confirm('リセットしますか？')) {
+                points = []; furniture = [];
+                render2D();
+                areaDisplay.innerText = "0.00 ㎡";
+            }
+        }
+
+        // --- 3D連携 (Three.js) ---
+        let scene, camera, renderer;
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111827);
+            camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 2000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(threeContainer.clientWidth, threeContainer.clientHeight);
+            threeContainer.innerHTML = '';
+            threeContainer.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(200, 500, 300);
+            scene.add(directionalLight);
+
+            // 壁の生成
+            if (points.length > 1) {
+                const shape = new THREE.Shape();
+                shape.moveTo(points[0].x - 400, -(points[0].y - 300));
+                points.forEach(p => shape.lineTo(p.x - 400, -(p.y - 300)));
+                
+                const extrudeSettings = { depth: 50, bevelEnabled: false };
+                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                const material = new THREE.MeshStandardMaterial({ color: 0x64748b, wireframe: false });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.rotation.x = -Math.PI / 2; // 床に寝かせる
+                scene.add(mesh);
+            }
+
+            camera.position.set(0, 500, 500);
+            camera.lookAt(0, 0, 0);
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+            };
+            animate();
+        }
+
+        // ビュー切り替え
+        window.currentView = '2d';
+        function switchView(view) {
+            window.currentView = view;
+            const btn2d = document.getElementById('btn-2d');
+            const btn3d = document.getElementById('btn-3d');
+            
+            if (view === '3d') {
+                threeContainer.style.display = 'block';
+                document.getElementById('canvas-container').style.display = 'none';
+                btn3d.className = "px-4 py-1 rounded bg-blue-500 text-white text-sm";
+                btn2d.className = "px-4 py-1 rounded text-slate-300 text-sm";
+                init3D();
+            } else {
+                threeContainer.style.display = 'none';
+                document.getElementById('canvas-container').style.display = 'block';
+                btn2d.className = "px-4 py-1 rounded bg-blue-500 text-white text-sm";
+                btn3d.className = "px-4 py-1 rounded text-slate-300 text-sm";
+            }
+        }
+
+        // 初回読み込み
+        loadFromLocal();
+    </script>
+</body>
+</html>
